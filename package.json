@@ -1,0 +1,15 @@
+{
+	"name": "mcbor",
+	"module": "index.ts",
+	"type": "module",
+	"scripts": {
+		"fmt": "deno fmt --use-tabs"
+	},
+	"devDependencies": {
+		"@types/bun": "latest",
+		"cbor2": "^2.0.1"
+	},
+	"peerDependencies": {
+		"typescript": "^5.0.0"
+	}
+}
