@@ -3,14 +3,18 @@ import { parseCBORHeader } from "./parser";
 import * as numbers from "../types/number";
 import * as string from "../types/string";
 import * as simple from "../types/simple";
+import * as date from "../types/date";
 
-type _CBORObject = { [key: string]: CBORValue | _CBORObject | _CBORArray };
-type _CBORArray = Array<CBORValue | _CBORObject | _CBORArray>;
-
-export type CBORObject = {
-	[key: string]: CBORValue | _CBORObject | _CBORArray;
+type _CBORObject = {
+	[key: string]: CBORValue | _CBORObject | _CBORArray | CBORDate;
 };
-export type CBORArray = Array<CBORValue | _CBORObject | _CBORArray>;
+type _CBORArray = Array<CBORValue | _CBORObject | _CBORArray | CBORDate>;
+
+export type CBORDate = Date;
+export type CBORObject = {
+	[key: string]: CBORValue | _CBORObject | _CBORArray | CBORDate;
+};
+export type CBORArray = Array<CBORValue | _CBORObject | _CBORArray | CBORDate>;
 export type CBORValue = string | number | boolean | null;
 
 /**
@@ -25,6 +29,8 @@ export function encodeCBORValue(value: unknown): Uint8Array {
 		return simple.encodeBoolean(value);
 	} else if (value === null) {
 		return simple.encodeNull();
+	} else if (value instanceof Date) {
+		return date.encodeDate(value);
 	} else if (Array.isArray(value)) {
 		// For arrays, we need to handle this in the array module to avoid circular dependency
 		throw new Error("Array encoding should be handled by array.encodeArray()");
@@ -42,7 +48,7 @@ export function encodeCBORValue(value: unknown): Uint8Array {
 export function decodeCBORValue(
 	data: Uint8Array,
 	offset: number = 0,
-): { value: CBORValue; bytesConsumed: number } {
+): { value: CBORValue | CBORDate; bytesConsumed: number } {
 	const { majorType, additionalInfo } = parseCBORHeader(data, offset);
 
 	switch (majorType) {
@@ -58,6 +64,17 @@ export function decodeCBORValue(
 			const value = numbers.decodeNumber(slice);
 			const bytesConsumed = calculateNumberBytesConsumed(additionalInfo);
 			return { value, bytesConsumed };
+		}
+		case Major.Tag: {
+			// Check if it's a date tag
+			if (date.isDateValue(data, offset)) {
+				const slice = data.slice(offset);
+				const value = date.decodeDate(slice);
+				const bytesConsumed = date.calculateDateBytesConsumed(slice);
+				return { value, bytesConsumed };
+			} else {
+				throw new Error(`Unsupported tag: ${additionalInfo}`);
+			}
 		}
 		case Major.Array: {
 			// For arrays, we need to handle this in the array module to avoid circular dependency

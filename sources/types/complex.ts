@@ -2,6 +2,8 @@ import { Major } from "../common/common";
 import { parseCBORHeader } from "../common/parser";
 import { decodeLength, encodeLength } from "../common/length";
 import {
+	type CBORArray,
+	type CBORDate,
 	type CBORObject,
 	type CBORValue,
 	decodeCBORValue,
@@ -24,6 +26,9 @@ export function encodeArray(arr: Array<unknown>): Uint8Array {
 		if (Array.isArray(element)) {
 			// Handle arrays recursively
 			encodedElement = encodeArray(element);
+		} else if (element instanceof Date) {
+			// Handle dates
+			encodedElement = encodeCBORValue(element);
 		} else if (typeof element === "object" && element !== null) {
 			// Handle objects by calling map encoding
 			encodedElement = encodeMap(element as CBORObject);
@@ -54,7 +59,9 @@ export function encodeArray(arr: Array<unknown>): Uint8Array {
 /**
  * Decodes a CBOR array to a JavaScript array
  */
-export function decodeArray(data: Uint8Array): Array<CBORValue> {
+export function decodeArray(
+	data: Uint8Array,
+): Array<CBORValue | CBORDate | CBORObject | CBORArray> {
 	let offset = 0;
 
 	const { majorType, additionalInfo } = parseCBORHeader(data, offset);
@@ -73,7 +80,7 @@ export function decodeArray(data: Uint8Array): Array<CBORValue> {
 	offset += headerSize;
 
 	// Decode array elements
-	const result: Array<CBORValue> = [];
+	const result: Array<CBORValue | CBORDate | CBORObject | CBORArray> = [];
 
 	for (let i = 0; i < length; i++) {
 		if (offset >= data.length) {
@@ -128,6 +135,9 @@ export function encodeMap(map: CBORObject): Uint8Array {
 		// Encode the value
 		if (Array.isArray(value)) {
 			keyValueBytes.push(encodeArray(value));
+		} else if (value instanceof Date) {
+			// Handle dates
+			keyValueBytes.push(encodeCBORValue(value));
 		} else if (
 			typeof value === "object" && value !== null && !Array.isArray(value)
 		) {
