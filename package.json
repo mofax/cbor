@@ -1,7 +1,9 @@
 {
-	"name": "mcbor",
-	"module": "index.ts",
+	"name": "cbor-ts",
+	"version": "0.0.0",
+	"main": "./sources/main.ts",
 	"type": "module",
+	"repository": "https://github.com/mofax/cbor",
 	"scripts": {
 		"fmt": "deno fmt --use-tabs"
 	},

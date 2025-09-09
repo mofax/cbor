@@ -1,33 +1,213 @@
-# mcbor
+# cbor-ts
 
-A lightweight CBOR (Concise Binary Object Representation) encoder library for
-modern C++.
+A lightweight, zero-dependency CBOR (Concise Binary Object Representation)
+encoder/decoder library for TypeScript and JavaScript.
 
 ## Features
 
-- Typescript
-- Zero dependencies
-- Supports all major CBOR data types:
-  - Integers (unsigned/signed)
-  - Byte strings and text strings
-  - Arrays and maps
-  - Tags
-  - Simple values (true, false, null, undefined)
-  - Floating point numbers
+- 🚀 **Zero dependencies** - Pure TypeScript implementation
+- 🔄 **Full encode/decode support** - Bidirectional conversion between JS values
+  and CBOR binary format
+- 📦 **Comprehensive data type support**:
+  - Numbers (integers, floats, including 64-bit values)
+  - Strings (UTF-8 text strings)
+  - Booleans and null values
+  - Date objects (with semantic tagging)
+  - Arrays (with nesting support)
+  - Objects/Maps (with nesting support)
+- 🎯 **Spec compliant** - Follows RFC 8949 CBOR specification
+- ✨ **Modern TypeScript** - Full type safety and modern ES2020+ features
+- 🧪 **Well tested** - Comprehensive test suite with reference implementation
+  comparison
 
-```ts
-const a = CBOR.pack(false); // simple 20
-const b = CBOR.unpack(a); // false
-const c = CBOR.pack(null); // simple 22
-const d = CBOR.unpack(c); // null
-const e = CBOR.pack(2n ** 70n); // tag 2 + bstr
-const f = CBOR.unpack(e); // 2n ** 70n (bigint)
-const g = CBOR.pack(-1n - (2n ** 80n)); // tag 3 + bstr
-const h = CBOR.unpack(g); // same bigint
-const i = CBOR.pack(2n ** 63n - 1n); // major 0, uint64
-const j = CBOR.unpack(i); // bigint (outside JS safe), exact
-const k = CBOR.pack(true);
-const l = CBOR.unpack(k); // true
+## Installation
+
+```bash
+# Using Bun (recommended)
+bun add cbor-ts
+
+# Using npm
+npm install cbor-ts
+
+# Using pnpm
+pnpm add cbor-ts
 ```
 
-## Usage
+## Quick Start
+
+```ts
+import { CBOR } from "cbor-ts";
+
+// Basic values
+const packed = CBOR.pack("hello world");
+const unpacked = CBOR.unpack(packed); // "hello world"
+
+// Numbers
+const num = CBOR.pack(42);
+const float = CBOR.pack(3.14159);
+
+// Booleans and null
+const bool = CBOR.pack(true);
+const nil = CBOR.pack(null);
+
+// Dates
+const date = CBOR.pack(new Date());
+const restoredDate = CBOR.unpack(date); // Date object
+
+// Complex structures
+const data = {
+	name: "Alice",
+	age: 30,
+	active: true,
+	scores: [85, 92, 78],
+	metadata: {
+		created: new Date(),
+		tags: ["user", "premium"],
+	},
+};
+
+const encoded = CBOR.pack(data);
+const decoded = CBOR.unpack(encoded);
+```
+
+## API Reference
+
+### `CBOR.pack(value: any): Uint8Array`
+
+Encodes a JavaScript value into CBOR binary format.
+
+**Parameters:**
+
+- `value` - The value to encode (string, number, boolean, null, Date, Array,
+  Object)
+
+**Returns:** `Uint8Array` - The CBOR-encoded binary data
+
+**Example:**
+
+```ts
+const binary = CBOR.pack({ message: "Hello", count: 42 });
+```
+
+### `CBOR.unpack(data: Uint8Array): any`
+
+Decodes CBOR binary data back into a JavaScript value.
+
+**Parameters:**
+
+- `data` - The CBOR binary data to decode
+
+**Returns:** The decoded JavaScript value
+
+**Example:**
+
+```ts
+const value = CBOR.unpack(binaryData);
+```
+
+## Supported Data Types
+
+| JavaScript Type    | CBOR Major Type            | Notes                         |
+| ------------------ | -------------------------- | ----------------------------- |
+| `number` (integer) | 0 (unsigned), 1 (negative) | Full 64-bit integer support   |
+| `number` (float)   | 7 (float64)                | IEEE 754 double precision     |
+| `string`           | 3 (text string)            | UTF-8 encoded                 |
+| `boolean`          | 7 (simple values)          | `true` (21), `false` (20)     |
+| `null`             | 7 (simple value 22)        | JavaScript null               |
+| `Date`             | 6 (semantic tag) + payload | Tag 1 (epoch timestamp)       |
+| `Array`            | 4 (array)                  | Supports nested arrays        |
+| `Object`           | 5 (map)                    | String keys, supports nesting |
+
+## Advanced Usage
+
+### Working with Binary Data
+
+```ts
+import { CBOR } from "cbor-ts";
+
+// Encode complex nested data
+const complexData = {
+	users: [
+		{ id: 1, name: "Alice", lastSeen: new Date() },
+		{ id: 2, name: "Bob", lastSeen: new Date() },
+	],
+	settings: {
+		theme: "dark",
+		notifications: true,
+		limits: [10, 50, 100],
+	},
+};
+
+const encoded = CBOR.pack(complexData);
+console.log(`Encoded size: ${encoded.length} bytes`);
+
+const decoded = CBOR.unpack(encoded);
+console.log(decoded.users[0].lastSeen instanceof Date); // true
+```
+
+### Error Handling
+
+```ts
+try {
+	const result = CBOR.unpack(invalidData);
+} catch (error) {
+	console.error("Failed to decode CBOR:", error.message);
+}
+
+// Encoding errors
+try {
+	CBOR.pack(Symbol("cannot-encode")); // Will throw
+} catch (error) {
+	console.error("Cannot encode value:", error.message);
+}
+```
+
+## Performance Characteristics
+
+- **Memory efficient**: encoding/decoding with minimal allocations
+- **Speed optimized**: Fast path for common data types
+- **Small footprint**: Zero dependencies, compact library size
+
+## Compatibility
+
+- **Node.js**: Runtimes compatible with NodeJS 16.x and above
+- **Browsers**: Modern browsers with TypedArray support
+- **TypeScript**: 5.0+
+
+## Development
+
+```bash
+# Clone the repository
+git clone https://github.com/mofax/cbor.git
+cd cbor
+
+# Install dependencies
+bun install
+
+# Run tests
+bun test
+
+# Format code
+bun run fmt
+```
+
+## Standards Compliance
+
+This library implements the CBOR specification as defined in:
+
+- [RFC 8949: Concise Binary Object Representation (CBOR)](https://tools.ietf.org/rfc/rfc8949.html)
+
+Supported CBOR features:
+
+- All major types (0-7)
+- Definite-length encoding for strings, arrays, and maps
+- IEEE 754 floating-point numbers (float64)
+- Semantic tagging for dates (tag 1)
+
+## License
+
+MIT License - see LICENSE file for details.
+
+## Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
