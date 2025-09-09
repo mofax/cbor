@@ -1,6 +1,6 @@
 {
 	"name": "cbor-ts",
-	"version": "0.0.1",
+	"version": "0.0.2",
 	"main": "./sources/main.ts",
 	"type": "module",
 	"repository": "https://github.com/mofax/cbor",
