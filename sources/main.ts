@@ -1,13 +1,6 @@
 import { Major } from "./common/common";
 import { parseCBORHeader } from "./common/parser";
-import {
-	type CBORArray,
-	type CBORDate,
-	type CBORObject,
-	type CBORValue,
-	decodeCBORValue,
-	encodeCBORValue,
-} from "./common/codec";
+import { type CBORIO, decodeCBORValue, encodeCBORValue } from "./common/codec";
 import {
 	decodeArray,
 	decodeMap,
@@ -16,7 +9,6 @@ import {
 } from "./types/complex";
 import { isDateValue } from "./types/date";
 
-type CBORIO = CBORValue | CBORObject | CBORArray | CBORDate;
 const CBOR = {} as {
 	pack: (value: CBORIO) => Uint8Array;
 	unpack: (data: Uint8Array) => CBORIO;
@@ -26,6 +18,8 @@ CBOR.pack = (value: CBORIO) => {
 	if (Array.isArray(value)) {
 		return encodeArray(value);
 	} else if (value instanceof Date) {
+		return encodeCBORValue(value);
+	} else if (value instanceof Uint8Array) {
 		return encodeCBORValue(value);
 	} else if (
 		typeof value === "object" && value !== null && !Array.isArray(value)

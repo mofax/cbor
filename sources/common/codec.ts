@@ -2,6 +2,7 @@ import { Major } from "./common";
 import { parseCBORHeader } from "./parser";
 import * as numbers from "../types/number";
 import * as string from "../types/string";
+import * as bytes from "../types/bytes";
 import * as simple from "../types/simple";
 import * as date from "../types/date";
 
@@ -11,11 +12,16 @@ type _CBORObject = {
 type _CBORArray = Array<CBORValue | _CBORObject | _CBORArray | CBORDate>;
 
 export type CBORDate = Date;
+export type CBORBytes = Uint8Array;
 export type CBORObject = {
-	[key: string]: CBORValue | _CBORObject | _CBORArray | CBORDate;
+	[key: string]: CBORValue | _CBORObject | _CBORArray | CBORDate | CBORBytes;
 };
-export type CBORArray = Array<CBORValue | _CBORObject | _CBORArray | CBORDate>;
+export type CBORArray = Array<
+	CBORValue | _CBORObject | _CBORArray | CBORDate | CBORBytes
+>;
 export type CBORValue = string | number | boolean | null;
+// all encompassing type
+export type CBORIO = CBORValue | CBORObject | CBORArray | CBORDate | CBORBytes;
 
 /**
  * Encodes any CBOR value to bytes (except arrays and maps - use array.encodeArray or map.encodeMap directly)
@@ -23,6 +29,8 @@ export type CBORValue = string | number | boolean | null;
 export function encodeCBORValue(value: unknown): Uint8Array {
 	if (typeof value === "string") {
 		return string.encodeString(value);
+	} else if (value instanceof Uint8Array) {
+		return bytes.encodeBytes(value);
 	} else if (typeof value === "number") {
 		return numbers.encodeNumber(value);
 	} else if (typeof value === "boolean") {
@@ -48,7 +56,7 @@ export function encodeCBORValue(value: unknown): Uint8Array {
 export function decodeCBORValue(
 	data: Uint8Array,
 	offset: number = 0,
-): { value: CBORValue | CBORDate; bytesConsumed: number } {
+): { value: CBORValue | CBORDate | CBORBytes; bytesConsumed: number } {
 	const { majorType, additionalInfo } = parseCBORHeader(data, offset);
 
 	switch (majorType) {
@@ -56,6 +64,12 @@ export function decodeCBORValue(
 			const slice = data.slice(offset);
 			const value = string.decodeString(slice);
 			const bytesConsumed = calculateStringBytesConsumed(slice, additionalInfo);
+			return { value, bytesConsumed };
+		}
+		case Major.Bytes: {
+			const slice = data.slice(offset);
+			const value = bytes.decodeBytes(slice);
+			const bytesConsumed = calculateBytesBytesConsumed(slice, additionalInfo);
 			return { value, bytesConsumed };
 		}
 		case Major.Unsigned:
@@ -153,6 +167,34 @@ function calculateStringBytesConsumed(
 		contentLength = view.getUint32(0, false);
 	} else {
 		throw new Error(`Unsupported string length encoding: ${additionalInfo}`);
+	}
+
+	return headerSize + contentLength;
+}
+
+function calculateBytesBytesConsumed(
+	data: Uint8Array,
+	additionalInfo: number,
+): number {
+	let headerSize: number;
+	let contentLength: number;
+
+	if (additionalInfo <= 23) {
+		headerSize = 1;
+		contentLength = additionalInfo;
+	} else if (additionalInfo === 24) {
+		headerSize = 2;
+		contentLength = data[1];
+	} else if (additionalInfo === 25) {
+		headerSize = 3;
+		const view = new DataView(data.buffer, data.byteOffset + 1, 2);
+		contentLength = view.getUint16(0, false);
+	} else if (additionalInfo === 26) {
+		headerSize = 5;
+		const view = new DataView(data.buffer, data.byteOffset + 1, 4);
+		contentLength = view.getUint32(0, false);
+	} else {
+		throw new Error(`Unsupported bytes length encoding: ${additionalInfo}`);
 	}
 
 	return headerSize + contentLength;

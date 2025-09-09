@@ -11,6 +11,7 @@ encoder/decoder library for TypeScript and JavaScript.
 - 📦 **Comprehensive data type support**:
   - Numbers (integers, floats, including 64-bit values)
   - Strings (UTF-8 text strings)
+  - Binary data (Uint8Array byte strings)
   - Booleans and null values
   - Date objects (with semantic tagging)
   - Arrays (with nesting support)
@@ -54,12 +55,18 @@ const nil = CBOR.pack(null);
 const date = CBOR.pack(new Date());
 const restoredDate = CBOR.unpack(date); // Date object
 
+// Binary data (Uint8Array)
+const binaryData = new Uint8Array([0x48, 0x65, 0x6c, 0x6c, 0x6f]); // "Hello" in bytes
+const packedBytes = CBOR.pack(binaryData);
+const unpackedBytes = CBOR.unpack(packedBytes); // Uint8Array
+
 // Complex structures
 const data = {
 	name: "Alice",
 	age: 30,
 	active: true,
 	scores: [85, 92, 78],
+	avatar: new Uint8Array([0xFF, 0xD8, 0xFF, 0xE0]), // Binary image data
 	metadata: {
 		created: new Date(),
 		tags: ["user", "premium"],
@@ -78,8 +85,8 @@ Encodes a JavaScript value into CBOR binary format.
 
 **Parameters:**
 
-- `value` - The value to encode (string, number, boolean, null, Date, Array,
-  Object)
+- `value` - The value to encode (string, number, boolean, null, Date,
+  Uint8Array, Array, Object)
 
 **Returns:** `Uint8Array` - The CBOR-encoded binary data
 
@@ -112,6 +119,7 @@ const value = CBOR.unpack(binaryData);
 | `number` (integer) | 0 (unsigned), 1 (negative) | Full 64-bit integer support   |
 | `number` (float)   | 7 (float64)                | IEEE 754 double precision     |
 | `string`           | 3 (text string)            | UTF-8 encoded                 |
+| `Uint8Array`       | 2 (byte string)            | Binary data, preserves bytes  |
 | `boolean`          | 7 (simple values)          | `true` (21), `false` (20)     |
 | `null`             | 7 (simple value 22)        | JavaScript null               |
 | `Date`             | 6 (semantic tag) + payload | Tag 1 (epoch timestamp)       |
@@ -125,16 +133,74 @@ const value = CBOR.unpack(binaryData);
 ```ts
 import { CBOR } from "cbor-ts";
 
-// Encode complex nested data
+// Encode raw binary data
+const binaryData = new Uint8Array([
+	0x48,
+	0x65,
+	0x6c,
+	0x6c,
+	0x6f,
+	0x20,
+	0x57,
+	0x6f,
+	0x72,
+	0x6c,
+	0x64,
+]);
+const encoded = CBOR.pack(binaryData);
+const decoded = CBOR.unpack(encoded); // Returns Uint8Array
+
+console.log(decoded instanceof Uint8Array); // true
+console.log(Array.from(decoded)); // [72, 101, 108, 108, 111, 32, 87, 111, 114, 108, 100]
+
+// Binary data in complex structures
+const document = {
+	id: "doc123",
+	content: "Hello World",
+	thumbnail: new Uint8Array([0xFF, 0xD8, 0xFF, 0xE0]), // JPEG header bytes
+	attachments: [
+		{
+			name: "data.bin",
+			data: new Uint8Array([0xDE, 0xAD, 0xBE, 0xEF]),
+		},
+	],
+};
+
+const packedDoc = CBOR.pack(document);
+const unpackedDoc = CBOR.unpack(packedDoc);
+
+console.log(unpackedDoc.thumbnail instanceof Uint8Array); // true
+console.log(unpackedDoc.attachments[0].data instanceof Uint8Array); // true
+```
+
+### Complex Nested Structures
+
+### Complex Nested Structures
+
+```ts
+import { CBOR } from "cbor-ts";
+
+// Encode complex nested data with binary content
 const complexData = {
 	users: [
-		{ id: 1, name: "Alice", lastSeen: new Date() },
-		{ id: 2, name: "Bob", lastSeen: new Date() },
+		{
+			id: 1,
+			name: "Alice",
+			lastSeen: new Date(),
+			avatar: new Uint8Array([1, 2, 3]),
+		},
+		{
+			id: 2,
+			name: "Bob",
+			lastSeen: new Date(),
+			avatar: new Uint8Array([4, 5, 6]),
+		},
 	],
 	settings: {
 		theme: "dark",
 		notifications: true,
 		limits: [10, 50, 100],
+		encryptionKey: new Uint8Array(32), // 256-bit key
 	},
 };
 
@@ -143,6 +209,8 @@ console.log(`Encoded size: ${encoded.length} bytes`);
 
 const decoded = CBOR.unpack(encoded);
 console.log(decoded.users[0].lastSeen instanceof Date); // true
+console.log(decoded.users[0].avatar instanceof Uint8Array); // true
+console.log(decoded.settings.encryptionKey instanceof Uint8Array); // true
 ```
 
 ### Error Handling
