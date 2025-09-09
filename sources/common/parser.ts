@@ -1,10 +1,8 @@
-import { Major } from "./common";
-
 /**
  * Represents the parsed CBOR header information
  */
 export interface CBORHeader {
-	majorType: Major;
+	majorType: number;
 	additionalInfo: number;
 }
 
@@ -20,7 +18,7 @@ export function parseCBORHeader(
 	}
 
 	const firstByte = data[offset];
-	const majorType = (firstByte & 0xe0) as Major; // Extract major type (top 3 bits)
+	const majorType = firstByte & 0xe0; // Extract major type (top 3 bits)
 	const additionalInfo = firstByte & 0x1f; // Extract additional info (bottom 5 bits)
 
 	return { majorType, additionalInfo };
@@ -30,8 +28,8 @@ export function parseCBORHeader(
  * Validates that the major type matches the expected type
  */
 export function validateMajorType(
-	actualMajorType: Major,
-	expectedMajorType: Major,
+	actualMajorType: number,
+	expectedMajorType: number,
 	typeName: string,
 ): void {
 	if (actualMajorType !== expectedMajorType) {

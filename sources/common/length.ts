@@ -1,4 +1,3 @@
-import { Major } from "./common";
 import { getUint64, setUint64 } from "./bytes";
 
 // CBOR additional information values
@@ -21,7 +20,7 @@ export const UINT64_SIZE = 8;
 /**
  * Encodes a length value with the specified major type
  */
-export function encodeLength(length: number, majorType: Major): Uint8Array {
+export function encodeLength(length: number, majorType: number): Uint8Array {
 	if (length <= DIRECT_ENCODING_MAX) {
 		return new Uint8Array([majorType | length]);
 	} else if (length <= UINT8_MAX) {
