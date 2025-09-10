@@ -34,9 +34,7 @@ export function validateMajorType(
 ): void {
 	if (actualMajorType !== expectedMajorType) {
 		throw new Error(
-			`Invalid major type for ${typeName}: expected ${
-				expectedMajorType >> 5
-			}, got ${actualMajorType >> 5}`,
+			`Invalid major type for ${typeName}: expected ${expectedMajorType >> 5}, got ${actualMajorType >> 5}`,
 		);
 	}
 }
@@ -51,9 +49,7 @@ export function createDataView(
 ): DataView {
 	if (offset + size > data.length) {
 		throw new Error(
-			`Insufficient data: need ${size} bytes at offset ${offset}, but only ${
-				data.length - offset
-			} available`,
+			`Insufficient data: need ${size} bytes at offset ${offset}, but only ${data.length - offset} available`,
 		);
 	}
 	return new DataView(data.buffer, data.byteOffset + offset, size);

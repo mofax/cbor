@@ -1,9 +1,5 @@
 import { Major } from "./common";
-import {
-	DIRECT_ENCODING_MAX,
-	UINT8_ADDITIONAL_DATA,
-	UINT8_MAX,
-} from "./length";
+import { DIRECT_ENCODING_MAX, UINT8_ADDITIONAL_DATA, UINT8_MAX } from "./length";
 
 /**
  * Encodes a CBOR tag header.
