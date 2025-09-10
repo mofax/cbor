@@ -1,13 +1,12 @@
 # cbor-ts
 
-A lightweight, zero-dependency CBOR (Concise Binary Object Representation)
-encoder/decoder library for TypeScript and JavaScript.
+A lightweight, zero-dependency CBOR (Concise Binary Object Representation) encoder/decoder library for TypeScript and
+JavaScript.
 
 ## Features
 
 - 🚀 **Zero dependencies** - Pure TypeScript implementation
-- 🔄 **Full encode/decode support** - Bidirectional conversion between JS values
-  and CBOR binary format
+- 🔄 **Full encode/decode support** - Bidirectional conversion between JS values and CBOR binary format
 - 📦 **Comprehensive data type support**:
   - Numbers (integers, floats, including 64-bit values)
   - Strings (UTF-8 text strings)
@@ -18,8 +17,7 @@ encoder/decoder library for TypeScript and JavaScript.
   - Objects/Maps (with nesting support)
 - 🎯 **Spec compliant** - Follows RFC 8949 CBOR specification
 - ✨ **Modern TypeScript** - Full type safety and modern ES2020+ features
-- 🧪 **Well tested** - Comprehensive test suite with reference implementation
-  comparison
+- 🧪 **Well tested** - Comprehensive test suite with reference implementation comparison
 
 ## Installation
 
@@ -85,8 +83,7 @@ Encodes a JavaScript value into CBOR binary format.
 
 **Parameters:**
 
-- `value` - The value to encode (string, number, boolean, null, Date,
-  Uint8Array, Array, Object)
+- `value` - The value to encode (string, number, boolean, null, Date, Uint8Array, Array, Object)
 
 **Returns:** `Uint8Array` - The CBOR-encoded binary data
 
@@ -278,4 +275,5 @@ MIT License - see LICENSE file for details.
 
 ## Contributing
 
-Contributions are welcome! Please feel free to submit a Pull Request.
+Contributions are welcome! Please see [AGENTS.md](AGENTS.md) (Repository Guidelines) for coding style, testing, and PR
+conventions before submitting a Pull Request.
