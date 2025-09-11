@@ -114,14 +114,16 @@ const value = CBOR.unpack(binaryData);
 | JavaScript Type    | CBOR Major Type            | Notes                         |
 | ------------------ | -------------------------- | ----------------------------- |
 | `number` (integer) | 0 (unsigned), 1 (negative) | Full 64-bit integer support   |
-| `number` (float)   | 7 (float64)                | IEEE 754 double precision     |
-| `string`           | 3 (text string)            | UTF-8 encoded                 |
 | `Uint8Array`       | 2 (byte string)            | Binary data, preserves bytes  |
-| `boolean`          | 7 (simple values)          | `true` (21), `false` (20)     |
-| `null`             | 7 (simple value 22)        | JavaScript null               |
-| `Date`             | 6 (semantic tag) + payload | Tag 1 (epoch timestamp)       |
+| `string`           | 3 (text string)            | UTF-8 encoded                 |
 | `Array`            | 4 (array)                  | Supports nested arrays        |
 | `Object`           | 5 (map)                    | String keys, supports nesting |
+| `Date`             | 6 (semantic tag) + payload | Tag 1 (epoch timestamp)       |
+| `number` (float)   | 7 (float64)                | IEEE 754 double precision     |
+| `boolean`          | 7 (simple values)          | `true` (21), `false` (20)     |
+| `null`             | 7 (simple value 22)        | JavaScript null               |
+
+
 
 ## Advanced Usage
 
