@@ -1,13 +1,10 @@
 import { Major } from "./common/common";
 import { parseCBORHeader } from "./common/parser";
-import { type CBORIO, decodeCBORValue, encodeCBORValue } from "./common/codec";
-import {
-	decodeArray,
-	decodeMap,
-	encodeArray,
-	encodeMap,
-} from "./types/complex";
+import { decodeCBORValue, encodeCBORValue } from "./common/codec";
+import type { CBORIO, CBORObject, CBORTaggable } from "./common/codec";
+import { decodeArray, decodeMap, encodeArray, encodeMap } from "./types/complex";
 import { isDateValue } from "./types/date";
+import { isTaggable } from "./common/tags";
 
 const CBOR = {} as {
 	pack: (value: CBORIO) => Uint8Array;
@@ -21,10 +18,11 @@ CBOR.pack = (value: CBORIO) => {
 		return encodeCBORValue(value);
 	} else if (value instanceof Uint8Array) {
 		return encodeCBORValue(value);
-	} else if (
-		typeof value === "object" && value !== null && !Array.isArray(value)
-	) {
-		return encodeMap(value);
+	} else if (typeof value === "object" && value !== null) {
+		if (isTaggable(value)) {
+			throw new Error("Custom Tags are not supported yet");
+		}
+		return encodeMap(value as CBORObject);
 	} else {
 		return encodeCBORValue(value);
 	}
@@ -51,3 +49,4 @@ CBOR.unpack = (data: Uint8Array): CBORIO => {
 };
 
 export { CBOR };
+export type { CBORIO, CBORTaggable };

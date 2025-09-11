@@ -6,6 +6,16 @@ import * as bytes from "../types/bytes";
 import * as simple from "../types/simple";
 import * as date from "../types/date";
 
+export interface CBORTaggable {
+	__is_cbor_taggable__: true;
+	__custom_tag__: number;
+	toCBOR(): {
+		type: "bytes" | "string" | "integer" | "array" | "float64";
+		value: any;
+	};
+	fromCBOR(data: Uint8Array): unknown;
+}
+
 type _CBORObject = {
 	[key: string]: CBORValue | _CBORObject | _CBORArray | CBORDate;
 };
@@ -21,7 +31,13 @@ export type CBORArray = Array<
 >;
 export type CBORValue = string | number | boolean | null;
 // all encompassing type
-export type CBORIO = CBORValue | CBORObject | CBORArray | CBORDate | CBORBytes;
+export type CBORIO =
+	| CBORValue
+	| CBORObject
+	| CBORArray
+	| CBORDate
+	| CBORBytes
+	| CBORTaggable;
 
 /**
  * Encodes any CBOR value to bytes (except arrays and maps - use array.encodeArray or map.encodeMap directly)

@@ -152,8 +152,7 @@ export function calculateDateBytesConsumed(
 
 	// Calculate the size of the tagged value
 	const taggedData = data.slice(offset + tagHeaderSize);
-	const { majorType: valueMajorType, additionalInfo: valueAdditionalInfo } =
-		parseCBORHeader(taggedData, 0);
+	const { majorType: valueMajorType, additionalInfo: valueAdditionalInfo } = parseCBORHeader(taggedData, 0);
 
 	let valueSize: number;
 	if (valueMajorType === Major.Unsigned || valueMajorType === Major.Negative) {

@@ -6,7 +6,7 @@
 	"repository": "https://github.com/mofax/cbor",
 	"homepage": "https://github.com/mofax/cbor#readme",
 	"scripts": {
-		"fmt": "deno fmt --use-tabs"
+		"fmt": "deno fmt --use-tabs --line-width=120"
 	},
 	"devDependencies": {
 		"@types/bun": "latest",
