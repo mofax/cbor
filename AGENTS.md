@@ -8,14 +8,6 @@
 - `sources/tests/*.test.ts`: Bun test suites.
 - `specs/`: Reserved for protocol notes or future spec docs.
 
-## Build, Test, and Development Commands
-
-- `bun install` — install dependencies.
-- `bun test` — run all tests (Bun test runner).
-  - Examples: `bun test sources/tests/strings.test.ts`, `bun test --coverage`.
-- `bun run fmt` — format with Deno (`deno fmt --use-tabs --line-width=120`).
-- No build step is required; the library targets ESNext ESM and is consumed by bundlers directly.
-
 ## Coding Style & Naming Conventions
 
 - Language: TypeScript (strict mode, ESM, no emit in repo).
