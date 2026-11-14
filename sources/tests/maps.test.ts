@@ -109,6 +109,34 @@ describe("CBOR maps with arbitrary keys", () => {
 		expect(decoded).toEqual(new Map(entries));
 	});
 
+	test("keeps insertion order when numeric-looking text keys precede a non-text key", () => {
+		const decoded = CBOR.unpack(bytesFromHex("a46132026231300a6133030101")) as TestMap;
+		expect(Array.from(decoded.keys())).toEqual(["2", "10", "3", 1]);
+	});
+
+	test.each([{ indefinite: false }, { indefinite: true }, { deterministic: true }])(
+		"rejects object keys that become identical after UTF-8 replacement with %o",
+		(options) => {
+			const value = { ["x\ud800"]: 1, ["x\ufffd"]: 2 };
+			expect(() => CBOR.pack(value, options)).toThrow("Duplicate CBOR map key");
+			expect(CBOR.unpack(CBOR.pack({ ["x\ud800"]: 1, ["x😀"]: 2 }, options))).toEqual({
+				["x\ufffd"]: 1,
+				["x😀"]: 2,
+			});
+		},
+	);
+
+	test("rejects distinct primitive map keys with the same wire encoding", () => {
+		expect(() =>
+			packMap(
+				new Map<CBORIO, CBORIO>([
+					[1, true],
+					[1n, false],
+				]),
+			),
+		).toThrow("Duplicate CBOR map key");
+	});
+
 	test("round-trips byte strings and arrays as keys inside nested maps", () => {
 		const original: { items: [TestMap, number] } = {
 			items: [

@@ -1,6 +1,6 @@
-import { joinChunks } from "../common/bytes.js";
-import { encodeTag } from "../common/tags.js";
-import { encodeBytes } from "./bytes.js";
+import { Major } from "../common/common.js";
+import type { ByteWriter } from "../common/writer.js";
+import { writeByteString } from "./bytes.js";
 
 const typedArrayTags = [
 	[64, Uint8Array],
@@ -48,7 +48,11 @@ function reverseElements(bytes: Uint8Array, width: number): void {
 	}
 }
 
-export function encodeTypedArray(value: ArrayBufferView, indefinite: boolean): Uint8Array {
+export function writeTypedArray(
+	writer: ByteWriter,
+	value: ArrayBufferView,
+	indefinite: boolean,
+): void {
 	for (const [tag, ctor] of typedArrayTags) {
 		if (value instanceof ctor) {
 			const width = ctor.BYTES_PER_ELEMENT;
@@ -57,7 +61,9 @@ export function encodeTypedArray(value: ArrayBufferView, indefinite: boolean): U
 			if (bytes !== view) {
 				reverseElements(bytes, width);
 			}
-			return joinChunks([encodeTag(tag), encodeBytes(bytes, indefinite)]);
+			writer.writeArgument(Major.Tag, tag);
+			writeByteString(writer, bytes, indefinite);
+			return;
 		}
 	}
 	throw new TypeError("Unsupported CBOR typed array");

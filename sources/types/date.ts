@@ -1,21 +1,18 @@
-import { encodeTag } from "../common/tags.js";
-import { encodeNumber } from "./number.js";
+import { Major } from "../common/common.js";
+import type { ByteWriter } from "../common/writer.js";
+import { writeNumber } from "./number.js";
 
 const ISO_STRING_TAG = 0;
 const EPOCH_TAG = 1;
 
-export function encodeDate(date: Date, deterministic = false): Uint8Array {
+export function writeDate(writer: ByteWriter, date: Date, deterministic: boolean): void {
 	const milliseconds = date.getTime();
 	if (!Number.isFinite(milliseconds)) {
 		throw new Error("Invalid Date object");
 	}
 
-	const tag = encodeTag(EPOCH_TAG);
-	const payload = encodeNumber(milliseconds / 1000, deterministic);
-	const result = new Uint8Array(tag.length + payload.length);
-	result.set(tag);
-	result.set(payload, tag.length);
-	return result;
+	writer.writeByte(Major.Tag | EPOCH_TAG);
+	writeNumber(writer, milliseconds / 1000, deterministic);
 }
 
 export function decodeDate(tag: 0 | 1, value: unknown): Date {

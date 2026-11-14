@@ -1,5 +1,4 @@
-import { getUint64, setUint64 } from "./bytes.js";
-import { createDataView } from "./parser.js";
+import { createDataView, requireBytes } from "./parser.js";
 
 // CBOR additional information values
 export const DIRECT_ENCODING_MAX = 23;
@@ -17,33 +16,54 @@ export const UINT32_MAX = 4294967295;
 export const UINT16_SIZE = 2;
 export const UINT32_SIZE = 4;
 export const UINT64_SIZE = 8;
+export const argumentWidths = [1, UINT16_SIZE, UINT32_SIZE, UINT64_SIZE];
 
-/**
- * Encodes a length value with the specified major type
- */
 export function encodeLength(length: number | bigint, majorType: number): Uint8Array {
-	if (length <= DIRECT_ENCODING_MAX) {
-		return Uint8Array.of(majorType | Number(length));
-	} else if (length <= UINT8_MAX) {
-		return Uint8Array.of(majorType | UINT8_ADDITIONAL_DATA, Number(length));
-	} else if (length <= UINT16_MAX) {
-		const out = new Uint8Array(1 + UINT16_SIZE);
-		out[0] = majorType | UINT16_ADDITIONAL_DATA;
-		const view = new DataView(out.buffer, 1);
-		view.setUint16(0, Number(length));
-		return out;
-	} else if (length <= UINT32_MAX) {
-		const out = new Uint8Array(1 + UINT32_SIZE);
-		out[0] = majorType | UINT32_ADDITIONAL_DATA;
-		const view = new DataView(out.buffer, 1);
-		view.setUint32(0, Number(length));
-		return out;
-	} else {
-		const out = new Uint8Array(1 + UINT64_SIZE);
-		out[0] = majorType | UINT64_ADDITIONAL_DATA;
-		const view = new DataView(out.buffer, 1);
-		setUint64(view, 0, BigInt(length));
-		return out;
+	const size = argumentSize(length);
+	const out = new Uint8Array(size);
+	writeArgumentAt(out, 0, majorType, length, size);
+	return out;
+}
+
+export function argumentSize(argument: number | bigint): number {
+	if (argument <= DIRECT_ENCODING_MAX) {
+		return 1;
+	}
+	if (argument <= UINT8_MAX) {
+		return 2;
+	}
+	if (argument <= UINT16_MAX) {
+		return 3;
+	}
+	return argument <= UINT32_MAX ? 5 : 9;
+}
+
+export function writeArgumentAt(
+	data: Uint8Array,
+	offset: number,
+	major: number,
+	argument: number | bigint,
+	size: number,
+): void {
+	switch (size) {
+		case 1:
+			data[offset] = major | Number(argument);
+			break;
+		case 2:
+			data[offset] = major | UINT8_ADDITIONAL_DATA;
+			data[offset + 1] = Number(argument);
+			break;
+		case 3:
+			data[offset] = major | UINT16_ADDITIONAL_DATA;
+			new DataView(data.buffer, data.byteOffset).setUint16(offset + 1, Number(argument));
+			break;
+		case 5:
+			data[offset] = major | UINT32_ADDITIONAL_DATA;
+			new DataView(data.buffer, data.byteOffset).setUint32(offset + 1, Number(argument));
+			break;
+		default:
+			data[offset] = major | UINT64_ADDITIONAL_DATA;
+			new DataView(data.buffer, data.byteOffset).setBigUint64(offset + 1, BigInt(argument));
 	}
 }
 
@@ -72,20 +92,35 @@ export function decodeArgument(
 	if (additionalInfo <= DIRECT_ENCODING_MAX) {
 		return { argument: additionalInfo, headerSize: 1 };
 	}
-	const body = offset + 1;
+	return {
+		argument: readExtendedArgument(data, offset + 1, additionalInfo, context),
+		headerSize: 1 + argumentWidths[additionalInfo - UINT8_ADDITIONAL_DATA],
+	};
+}
+
+export function readExtendedArgument(
+	data: Uint8Array,
+	body: number,
+	additionalInfo: number,
+	context: string,
+): number | bigint {
+	const width = argumentWidths[additionalInfo - UINT8_ADDITIONAL_DATA];
+	if (width === undefined) {
+		throw new Error(`Invalid additional info for ${context}: ${additionalInfo}`);
+	}
+	requireBytes(data, body, width);
 	switch (additionalInfo) {
 		case UINT8_ADDITIONAL_DATA:
-			return { argument: createDataView(data, body, 1).getUint8(0), headerSize: 2 };
+			return data[body];
 		case UINT16_ADDITIONAL_DATA:
-			return { argument: createDataView(data, body, UINT16_SIZE).getUint16(0), headerSize: 3 };
+			return data[body] * 256 + data[body + 1];
 		case UINT32_ADDITIONAL_DATA:
-			return { argument: createDataView(data, body, UINT32_SIZE).getUint32(0), headerSize: 5 };
-		case UINT64_ADDITIONAL_DATA: {
-			const value = getUint64(createDataView(data, body, UINT64_SIZE), 0);
-			const argument = value <= BigInt(Number.MAX_SAFE_INTEGER) ? Number(value) : value;
-			return { argument, headerSize: 1 + UINT64_SIZE };
+			return (
+				data[body] * 0x1000000 + (data[body + 1] << 16) + (data[body + 2] << 8) + data[body + 3]
+			);
+		default: {
+			const value = createDataView(data, body, UINT64_SIZE).getBigUint64(0);
+			return value <= 9007199254740991n ? Number(value) : value;
 		}
-		default:
-			throw new Error(`Invalid additional info for ${context}: ${additionalInfo}`);
 	}
 }

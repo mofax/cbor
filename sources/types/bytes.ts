@@ -1,14 +1,28 @@
 import { joinIndefinite } from "../common/bytes.js";
-import { Major } from "../common/common.js";
-import { encodeLength } from "../common/length.js";
+import { BREAK, INDEFINITE_LENGTH, Major } from "../common/common.js";
+import { argumentSize, writeArgumentAt } from "../common/length.js";
+import type { ByteWriter } from "../common/writer.js";
 
 export function encodeBytes(value: Uint8Array, indefinite = false): Uint8Array {
 	if (indefinite) {
 		return joinIndefinite(Major.Bytes, value.length === 0 ? [] : [encodeBytes(value)]);
 	}
-	const header = encodeLength(value.length, Major.Bytes);
-	const result = new Uint8Array(header.length + value.length);
-	result.set(header);
-	result.set(value, header.length);
+	const size = argumentSize(value.length);
+	const result = new Uint8Array(size + value.length);
+	writeArgumentAt(result, 0, Major.Bytes, value.length, size);
+	result.set(value, size);
 	return result;
+}
+
+export function writeByteString(writer: ByteWriter, value: Uint8Array, indefinite: boolean): void {
+	if (indefinite) {
+		writer.writeByte(Major.Bytes | INDEFINITE_LENGTH);
+	}
+	if (!indefinite || value.length > 0) {
+		writer.writeArgument(Major.Bytes, value.length);
+		writer.writeBytes(value);
+	}
+	if (indefinite) {
+		writer.writeByte(BREAK);
+	}
 }

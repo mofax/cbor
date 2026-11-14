@@ -12,6 +12,17 @@ describe("CBOR Bytes Tests", () => {
 		expect(Array.from(decoded as Uint8Array)).toEqual(Array.from(original));
 	});
 
+	test("keeps packed and unpacked bytes independent of caller-owned buffers", () => {
+		const input = Uint8Array.of(0, 1, 2, 3);
+		const encoded = CBOR.pack([input.subarray(1, 3)]);
+		input.fill(0);
+		expect(encoded).toEqual(Uint8Array.of(0x81, 0x42, 1, 2));
+
+		const decoded = CBOR.unpack(encoded);
+		encoded.fill(0);
+		expect(decoded).toEqual([Uint8Array.of(1, 2)]);
+	});
+
 	test("small byte array", () => {
 		const original = new Uint8Array([0x01, 0x02, 0x03, 0x04]);
 		const encoded = CBOR.pack(original);

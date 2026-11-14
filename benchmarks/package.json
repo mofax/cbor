@@ -1,0 +1,13 @@
+{
+	"name": "cbor-benchmarks",
+	"private": true,
+	"type": "module",
+	"scripts": {
+		"bench": "bun run cbor.ts"
+	},
+	"devDependencies": {
+		"@types/bun": "1.4.4",
+		"cbor-x": "1.6.9",
+		"mitata": "1.0.34"
+	}
+}

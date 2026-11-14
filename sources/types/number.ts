@@ -1,11 +1,10 @@
 import type { Decoded } from "../common/codec.js";
-import { joinChunks } from "../common/bytes.js";
 import { Major, MAX_U64 } from "../common/common.js";
 import { encodeLength } from "../common/length.js";
 import { createDataView } from "../common/parser.js";
-import { encodeTag } from "../common/tags.js";
-import { encodeBytes } from "./bytes.js";
+import { writeByteString } from "./bytes.js";
 import { encodeFloat64 } from "./float64.js";
+import type { ByteWriter } from "../common/writer.js";
 
 export function encodeNumber(value: number, deterministic = false): Uint8Array {
 	if (!Number.isFinite(value)) {
@@ -21,11 +20,26 @@ export function encodeNumber(value: number, deterministic = false): Uint8Array {
 	return value < 0 ? encodeLength(-1 - value, Major.Negative) : encodeLength(value, Major.Unsigned);
 }
 
-export function encodeBigInt(value: bigint): Uint8Array {
+export function writeNumber(writer: ByteWriter, value: number, deterministic: boolean): void {
+	if (Number.isSafeInteger(value) && (value !== 0 || 1 / value > 0)) {
+		if (value < 0) {
+			writer.writeArgument(Major.Negative, -1 - value);
+		} else {
+			writer.writeArgument(Major.Unsigned, value);
+		}
+	} else if (deterministic || !Number.isFinite(value) || (Number.isInteger(value) && value !== 0)) {
+		writer.writeBytes(encodeNumber(value, deterministic));
+	} else {
+		writer.writeFloat64(value);
+	}
+}
+
+export function writeBigInt(writer: ByteWriter, value: bigint): void {
 	const negative = value < 0n;
 	const magnitude = negative ? -1n - value : value;
 	if (magnitude <= MAX_U64) {
-		return encodeLength(magnitude, negative ? Major.Negative : Major.Unsigned);
+		writer.writeBigArgument(negative ? Major.Negative : Major.Unsigned, magnitude);
+		return;
 	}
 
 	const hex = magnitude.toString(16);
@@ -34,7 +48,8 @@ export function encodeBigInt(value: bigint): Uint8Array {
 	for (let i = 0; i < bytes.length; i++) {
 		bytes[i] = Number.parseInt(padded.slice(i * 2, i * 2 + 2), 16);
 	}
-	return joinChunks([encodeTag(negative ? 3 : 2), encodeBytes(bytes)]);
+	writer.writeByte(Major.Tag | (negative ? 3 : 2));
+	writeByteString(writer, bytes, false);
 }
 
 export function decodeBignum(tag: 2 | 3, value: unknown): bigint {
@@ -93,21 +108,28 @@ export function decodeFloat(
 	offset: number,
 	additionalInfo: number,
 ): Decoded<number> {
-	switch (additionalInfo) {
-		case 25: {
-			const bits = createDataView(data, offset + 1, 2).getUint16(0);
-			return { value: decodeFloat16(bits), nextOffset: offset + 3 };
-		}
-		case 26: {
-			const value = createDataView(data, offset + 1, 4).getFloat32(0);
-			return { value, nextOffset: offset + 5 };
-		}
-		case 27: {
-			const value = createDataView(data, offset + 1, 8).getFloat64(0);
-			return { value, nextOffset: offset + 9 };
-		}
+	const size = floatSize(additionalInfo);
+	return {
+		value: readFloat(createDataView(data, offset + 1, size), 0, size),
+		nextOffset: offset + 1 + size,
+	};
+}
+
+export function floatSize(additionalInfo: number): number {
+	if (additionalInfo < 25 || additionalInfo > 27) {
+		throw new Error(`Unsupported simple value with additional info: ${additionalInfo}`);
+	}
+	return 1 << (additionalInfo - 24);
+}
+
+export function readFloat(view: DataView, offset: number, size: number): number {
+	switch (size) {
+		case 2:
+			return decodeFloat16(view.getUint16(offset));
+		case 4:
+			return view.getFloat32(offset);
 		default:
-			throw new Error(`Unsupported simple value with additional info: ${additionalInfo}`);
+			return view.getFloat64(offset);
 	}
 }
 

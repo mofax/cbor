@@ -235,6 +235,25 @@ describe("Incremental decoding", () => {
 		expect(await collect(sequenceCBOR.unpackStream(chunksFrom(chunks)))).toEqual(values);
 	});
 
+	test("calls a completed tag handler once when the next map entry spans chunks", async () => {
+		let calls = 0;
+		const tagHandlers = new Map([
+			[
+				100,
+				(value: CBORIO) => {
+					calls++;
+					return value;
+				},
+			],
+		]);
+		const data = CBOR.pack({ first: CBOR.tag(100, 1), second: [2, 3] }, { indefinite: true });
+		const chunks = Array.from(data, (byte) => Uint8Array.of(byte));
+		expect(await collect(CBOR.unpackStream(chunks, { tagHandlers }))).toEqual([
+			{ first: 1, second: [2, 3] },
+		]);
+		expect(calls).toBe(1);
+	});
+
 	test("yields a complete item before asking for the next chunk", async () => {
 		let requestedNextChunk = false;
 		async function* input() {

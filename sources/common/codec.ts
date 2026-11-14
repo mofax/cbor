@@ -1,26 +1,13 @@
-import { joinChunks } from "./bytes.js";
 import { BREAK, INDEFINITE_LENGTH, Major } from "./common.js";
 import { decodeArgument, decodeLength } from "./length.js";
 import { IncompleteCBOR, parseCBORHeader } from "./parser.js";
-import { CBORTag, encodeTag } from "./tags.js";
-import { encodeBytes } from "../types/bytes.js";
-import { decodeArray, decodeMap, encodeArray, encodeMap } from "../types/complex.js";
-import { decodeDate, encodeDate } from "../types/date.js";
-import {
-	decodeBignum,
-	decodeNegativeInteger,
-	encodeBigInt,
-	encodeNumber,
-} from "../types/number.js";
-import {
-	CBORSimple,
-	decodeSimple,
-	encodeBoolean,
-	encodeNull,
-	encodeSimple,
-} from "../types/simple.js";
-import { decodeString, encodeString } from "../types/string.js";
-import { type CBORTypedArray, decodeTypedArray, encodeTypedArray } from "../types/typedarray.js";
+import { CBORTag } from "./tags.js";
+import { decodeArray, decodeMap } from "../types/complex.js";
+import { decodeDate } from "../types/date.js";
+import { decodeBignum, decodeNegativeInteger } from "../types/number.js";
+import { type CBORSimple, decodeSimple } from "../types/simple.js";
+import { decodeString } from "../types/string.js";
+import { type CBORTypedArray, decodeTypedArray } from "../types/typedarray.js";
 
 export type CBORObject = { [key: string]: CBORIO };
 export type CBORArray = CBORIO[];
@@ -55,66 +42,6 @@ export interface Decoded<T> {
 }
 
 export type ReadResult<T> = Generator<IncompleteCBOR, Decoded<T>, void>;
-
-export function createEncoder(options: EncodeOptions = {}): (value: CBORIO) => Uint8Array {
-	const { deterministic = false, indefinite = false } = options;
-	if (deterministic && indefinite) {
-		throw new TypeError("Deterministic CBOR requires definite lengths");
-	}
-
-	function encodeValue(value: CBORIO): Uint8Array {
-		switch (typeof value) {
-			case "string":
-				return encodeString(value, indefinite);
-			case "number":
-				return encodeNumber(value, deterministic);
-			case "bigint":
-				return encodeBigInt(value);
-			case "boolean":
-				return encodeBoolean(value);
-			case "undefined":
-				return encodeSimple(23);
-			case "object":
-				return value === null ? encodeNull() : encodeObject(value);
-			default:
-				throw new TypeError(`Unsupported CBOR type: ${typeof value}`);
-		}
-	}
-
-	function encodeObject(
-		value: Exclude<CBORIO, string | number | bigint | boolean | null | undefined>,
-	): Uint8Array {
-		if (value instanceof Uint8Array) {
-			return encodeBytes(value, indefinite);
-		}
-		if (value instanceof Date) {
-			return encodeDate(value, deterministic);
-		}
-		if (value instanceof CBORTag) {
-			return joinChunks([encodeTag(value.tag), encodeValue(value.value)]);
-		}
-		if (value instanceof CBORSimple) {
-			return encodeSimple(value.code);
-		}
-		if (ArrayBuffer.isView(value)) {
-			return encodeTypedArray(value, indefinite);
-		}
-		if (Array.isArray(value)) {
-			return encodeArray(value, encodeValue, indefinite);
-		}
-		if (value instanceof Map || isPlainObject(value)) {
-			return encodeMap(value, encodeValue, { deterministic, indefinite });
-		}
-		throw new TypeError("CBOR maps require plain objects or Map instances");
-	}
-
-	return encodeValue;
-}
-
-function isPlainObject(value: object): value is CBORObject {
-	const prototype = Object.getPrototypeOf(value);
-	return prototype === Object.prototype || prototype === null;
-}
 
 export class CBORReader {
 	constructor(
@@ -201,7 +128,11 @@ export class CBORReader {
 	}
 }
 
-function decodeTag(tag: number | bigint, value: CBORIO, { tagHandlers }: DecodeOptions): CBORIO {
+export function decodeTag(
+	tag: number | bigint,
+	value: CBORIO,
+	{ tagHandlers }: DecodeOptions,
+): CBORIO {
 	const handler = tagHandlers?.get(tag) ?? tagHandlers?.get(BigInt(tag));
 	if (handler !== undefined) {
 		return handler(value);
@@ -216,12 +147,4 @@ function decodeTag(tag: number | bigint, value: CBORIO, { tagHandlers }: DecodeO
 		default:
 			return decodeTypedArray(tag, value) ?? new CBORTag(tag, value);
 	}
-}
-
-export function readComplete<T>(result: ReadResult<T>): Decoded<T> {
-	const step = result.next();
-	if (!step.done) {
-		throw step.value;
-	}
-	return step.value;
 }
