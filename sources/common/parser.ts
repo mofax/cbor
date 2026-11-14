@@ -6,12 +6,14 @@ export interface CBORHeader {
 	additionalInfo: number;
 }
 
+export class IncompleteCBOR extends Error {}
+
 /**
  * Parses the first byte of CBOR data to extract major type and additional info
  */
 export function parseCBORHeader(data: Uint8Array, offset: number = 0): CBORHeader {
 	if (offset >= data.length) {
-		throw new Error("Insufficient data to parse CBOR header");
+		throw new IncompleteCBOR("Insufficient data to parse CBOR header");
 	}
 
 	const firstByte = data[offset];
@@ -26,7 +28,7 @@ export function parseCBORHeader(data: Uint8Array, offset: number = 0): CBORHeade
  */
 export function createDataView(data: Uint8Array, offset: number, size: number): DataView {
 	if (offset + size > data.length) {
-		throw new Error(
+		throw new IncompleteCBOR(
 			`Insufficient data: need ${size} bytes at offset ${offset}, but only ${data.length - offset} available`,
 		);
 	}

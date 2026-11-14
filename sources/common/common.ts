@@ -1,4 +1,6 @@
 export const MAX_U64 = (1n << 64n) - 1n;
+export const INDEFINITE_LENGTH = 31;
+export const BREAK = 0xff;
 
 /**
  * Represents the major types in the CBOR (Concise Binary Object Representation) encoding format.

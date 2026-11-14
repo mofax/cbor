@@ -4,14 +4,14 @@ import { encodeNumber } from "./number.js";
 const ISO_STRING_TAG = 0;
 const EPOCH_TAG = 1;
 
-export function encodeDate(date: Date): Uint8Array {
+export function encodeDate(date: Date, deterministic = false): Uint8Array {
 	const milliseconds = date.getTime();
 	if (!Number.isFinite(milliseconds)) {
 		throw new Error("Invalid Date object");
 	}
 
 	const tag = encodeTag(EPOCH_TAG);
-	const payload = encodeNumber(milliseconds / 1000);
+	const payload = encodeNumber(milliseconds / 1000, deterministic);
 	const result = new Uint8Array(tag.length + payload.length);
 	result.set(tag);
 	result.set(payload, tag.length);
