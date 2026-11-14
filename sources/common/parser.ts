@@ -9,10 +9,7 @@ export interface CBORHeader {
 /**
  * Parses the first byte of CBOR data to extract major type and additional info
  */
-export function parseCBORHeader(
-	data: Uint8Array,
-	offset: number = 0,
-): CBORHeader {
+export function parseCBORHeader(data: Uint8Array, offset: number = 0): CBORHeader {
 	if (offset >= data.length) {
 		throw new Error("Insufficient data to parse CBOR header");
 	}
@@ -27,11 +24,7 @@ export function parseCBORHeader(
 /**
  * Creates a properly aligned DataView for reading multi-byte values
  */
-export function createDataView(
-	data: Uint8Array,
-	offset: number,
-	size: number,
-): DataView {
+export function createDataView(data: Uint8Array, offset: number, size: number): DataView {
 	if (offset + size > data.length) {
 		throw new Error(
 			`Insufficient data: need ${size} bytes at offset ${offset}, but only ${data.length - offset} available`,

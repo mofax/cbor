@@ -85,13 +85,9 @@ export function decodeLength(
 		if (bigintLength <= BigInt(Number.MAX_SAFE_INTEGER)) {
 			return { length: Number(bigintLength), headerSize: 9 };
 		} else {
-			throw new Error(
-				`${context} ${bigintLength} exceeds JavaScript's safe integer range`,
-			);
+			throw new Error(`${context} ${bigintLength} exceeds JavaScript's safe integer range`);
 		}
 	} else {
-		throw new Error(
-			`Invalid additional info for ${context}: ${additionalInfo}`,
-		);
+		throw new Error(`Invalid additional info for ${context}: ${additionalInfo}`);
 	}
 }

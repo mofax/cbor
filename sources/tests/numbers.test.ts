@@ -196,17 +196,13 @@ describe("Negative numbers", () => {
 	test("-9007199254740992 (out of safe range)", () => {
 		expect(() => {
 			CBOR.pack(-9007199254740992);
-		}).toThrowError(
-			"Integer -9007199254740992 exceeds JavaScript's safe integer range",
-		);
+		}).toThrowError("Integer -9007199254740992 exceeds JavaScript's safe integer range");
 	});
 
 	test("9007199254740992 (out of safe range)", () => {
 		expect(() => {
 			CBOR.pack(9007199254740992);
-		}).toThrowError(
-			"Integer 9007199254740992 exceeds JavaScript's safe integer range",
-		);
+		}).toThrowError("Integer 9007199254740992 exceeds JavaScript's safe integer range");
 	});
 });
 
@@ -215,9 +211,7 @@ describe("Floating point numbers", () => {
 	test("0.5", () => {
 		const num1 = CBOR.pack(0.5);
 		// const num2 = encode(0.5);  TODO - we use float64 by default; maybe we should use half precision ?
-		expect(num1).toEqual(
-			new Uint8Array([0xfb, 0x3f, 0xe0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]),
-		);
+		expect(num1).toEqual(new Uint8Array([0xfb, 0x3f, 0xe0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]));
 		const decode1 = CBOR.unpack(num1);
 		expect(decode1).toBe(0.5);
 	});
@@ -242,10 +236,8 @@ describe("Floating point numbers", () => {
 
 	test("1.7976931348623157e+308 (Float64 max)", () => {
 		expect(() => {
-			CBOR.pack(1.7976931348623157e+308);
-		}).toThrowError(
-			"Integer 1.7976931348623157e+308 exceeds JavaScript's safe integer range",
-		);
+			CBOR.pack(1.7976931348623157e308);
+		}).toThrowError("Integer 1.7976931348623157e+308 exceeds JavaScript's safe integer range");
 	});
 
 	test("NaN", () => {

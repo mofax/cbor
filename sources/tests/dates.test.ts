@@ -80,19 +80,13 @@ describe("Date encoding and decoding", () => {
 		expect(unpacked[2] instanceof Date).toBe(true);
 		expect(unpacked[3]).toBe(42);
 
-		expect((unpacked[0] as Date).getTime()).toBe(
-			(testArray[0] as Date).getTime(),
-		);
-		expect((unpacked[2] as Date).getTime()).toBe(
-			(testArray[2] as Date).getTime(),
-		);
+		expect((unpacked[0] as Date).getTime()).toBe((testArray[0] as Date).getTime());
+		expect((unpacked[2] as Date).getTime()).toBe((testArray[2] as Date).getTime());
 	});
 
 	test("invalid dates", () => {
 		expect(() => CBOR.pack(new Date("invalid"))).toThrow("Invalid Date object");
-		expect(() => CBOR.pack(new Date(Number.NaN))).toThrow(
-			"Invalid Date object",
-		);
+		expect(() => CBOR.pack(new Date(Number.NaN))).toThrow("Invalid Date object");
 	});
 
 	test("edge case dates", () => {

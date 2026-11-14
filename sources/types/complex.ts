@@ -2,7 +2,10 @@ import type { CBORArray, CBORIO, CBORObject, Decoded } from "../common/codec.js"
 import { Major } from "../common/common.js";
 import { encodeLength } from "../common/length.js";
 
-export function encodeArray(arr: unknown[], encodeValue: (value: unknown) => Uint8Array): Uint8Array {
+export function encodeArray(
+	arr: unknown[],
+	encodeValue: (value: unknown) => Uint8Array,
+): Uint8Array {
 	const chunks = [encodeLength(arr.length, Major.Array)];
 	for (const value of arr) {
 		chunks.push(encodeValue(value));

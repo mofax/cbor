@@ -60,7 +60,12 @@ export function decodeCBORValue(data: Uint8Array): Decoded<CBORIO> {
 			}
 		}
 
-		const { length: argument, headerSize } = decodeLength(data, offset, additionalInfo, "CBOR argument");
+		const { length: argument, headerSize } = decodeLength(
+			data,
+			offset,
+			additionalInfo,
+			"CBOR argument",
+		);
 		const bodyOffset = offset + headerSize;
 		switch (majorType) {
 			case Major.Unsigned:
@@ -79,7 +84,8 @@ export function decodeCBORValue(data: Uint8Array): Decoded<CBORIO> {
 				}
 				const nextOffset = bodyOffset + argument;
 				const payload = data.subarray(bodyOffset, nextOffset);
-				const value = majorType === Major.Text ? utf8Decoder.decode(payload) : new Uint8Array(payload);
+				const value =
+					majorType === Major.Text ? utf8Decoder.decode(payload) : new Uint8Array(payload);
 				return { value, nextOffset };
 			}
 			case Major.Array:

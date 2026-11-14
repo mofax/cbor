@@ -18,7 +18,11 @@ export function encodeNumber(value: number): Uint8Array {
 	return value < 0 ? encodeLength(-1 - value, Major.Negative) : encodeLength(value, Major.Unsigned);
 }
 
-export function decodeFloat(data: Uint8Array, offset: number, additionalInfo: number): Decoded<number> {
+export function decodeFloat(
+	data: Uint8Array,
+	offset: number,
+	additionalInfo: number,
+): Decoded<number> {
 	switch (additionalInfo) {
 		case 25: {
 			const bits = createDataView(data, offset + 1, 2).getUint16(0);

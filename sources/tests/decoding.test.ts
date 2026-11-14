@@ -5,8 +5,7 @@ import { bytesFromHex } from "./hex";
 describe("Decoding definite-length data", () => {
 	test("reads the next sibling after a nested value encoded with a wider header", () => {
 		expect(CBOR.unpack(bytesFromHex("8281180102"))).toEqual([[1], 2]);
-		expect(CBOR.unpack(bytesFromHex("82b8016161180102")))
-			.toEqual([{ a: 1 }, 2]);
+		expect(CBOR.unpack(bytesFromHex("82b8016161180102"))).toEqual([{ a: 1 }, 2]);
 		expect(CBOR.unpack(bytesFromHex("82a2616181180161620203"))).toEqual([{ a: [1], b: 2 }, 3]);
 	});
 

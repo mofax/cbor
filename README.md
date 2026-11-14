@@ -64,7 +64,7 @@ const data = {
 	age: 30,
 	active: true,
 	scores: [85, 92, 78],
-	avatar: new Uint8Array([0xFF, 0xD8, 0xFF, 0xE0]), // Binary image data
+	avatar: new Uint8Array([0xff, 0xd8, 0xff, 0xe0]), // Binary image data
 	metadata: {
 		created: new Date(),
 		tags: ["user", "premium"],
@@ -135,17 +135,7 @@ import { CBOR } from "cbor-ts";
 
 // Encode raw binary data
 const binaryData = new Uint8Array([
-	0x48,
-	0x65,
-	0x6c,
-	0x6c,
-	0x6f,
-	0x20,
-	0x57,
-	0x6f,
-	0x72,
-	0x6c,
-	0x64,
+	0x48, 0x65, 0x6c, 0x6c, 0x6f, 0x20, 0x57, 0x6f, 0x72, 0x6c, 0x64,
 ]);
 const encoded = CBOR.pack(binaryData);
 const decoded = CBOR.unpack(encoded); // Returns Uint8Array
@@ -157,11 +147,11 @@ console.log(Array.from(decoded)); // [72, 101, 108, 108, 111, 32, 87, 111, 114, 
 const document = {
 	id: "doc123",
 	content: "Hello World",
-	thumbnail: new Uint8Array([0xFF, 0xD8, 0xFF, 0xE0]), // JPEG header bytes
+	thumbnail: new Uint8Array([0xff, 0xd8, 0xff, 0xe0]), // JPEG header bytes
 	attachments: [
 		{
 			name: "data.bin",
-			data: new Uint8Array([0xDE, 0xAD, 0xBE, 0xEF]),
+			data: new Uint8Array([0xde, 0xad, 0xbe, 0xef]),
 		},
 	],
 };
