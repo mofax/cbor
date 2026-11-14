@@ -1,7 +1,40 @@
 import { describe, expect, test } from "bun:test";
+import { encode } from "cbor2";
 import { CBOR } from "../main";
+import { bytesFromHex } from "./hex";
 
 describe("Date encoding and decoding", () => {
+	test("uses epoch seconds for tag 1", () => {
+		const date = new Date(1000);
+		const bytes = Uint8Array.of(0xc1, 0x01);
+		expect(CBOR.pack(date)).toEqual(bytes);
+		expect(CBOR.unpack(encode(date))).toEqual(date);
+	});
+
+	test("decodes fractional epoch seconds in shorter float encodings", () => {
+		expect(CBOR.unpack(bytesFromHex("c1f93e00"))).toEqual(new Date(1500));
+		expect(CBOR.unpack(bytesFromHex("c101"))).toEqual(new Date(1000));
+		expect(CBOR.unpack(bytesFromHex("c1fabfc00000"))).toEqual(new Date(-1500));
+	});
+
+	test("preserves millisecond precision at large positive and negative timestamps", () => {
+		for (const milliseconds of [8_639_999_999_999_999, -8_639_999_999_999_999, -1001, 1001]) {
+			const date = new Date(milliseconds);
+			expect(CBOR.unpack(CBOR.pack(date))).toEqual(date);
+		}
+	});
+
+	test("decodes a date string tagged with a wide tag header", () => {
+		const text = CBOR.pack("1970-01-01T00:00:01Z");
+		const bytes = Uint8Array.of(0x82, 0xd8, 0x00, ...text, 0x02);
+		expect(CBOR.unpack(bytes)).toEqual([new Date(1000), 2]);
+	});
+
+	test("rejects invalid date tag payloads", () => {
+		expect(() => CBOR.unpack(bytesFromHex("c000"))).toThrow("requires a text string");
+		expect(() => CBOR.unpack(bytesFromHex("c1f6"))).toThrow("requires a finite number");
+	});
+
 	test("pack - unpack", () => {
 		const testDate = new Date("2023-06-15T09:30:45.123Z");
 		const packed = CBOR.pack(testDate);

@@ -6,17 +6,17 @@ JavaScript.
 ## Features
 
 - 🚀 **Zero dependencies** - Pure TypeScript implementation
-- 🔄 **Full encode/decode support** - Bidirectional conversion between JS values and CBOR binary format
+- 🔄 **Encode and decode** - Bidirectional conversion between supported JavaScript values and CBOR
 - 📦 **Comprehensive data type support**:
-  - Numbers (integers, floats, including 64-bit values)
+  - Numbers (safe integers and floating-point values)
   - Strings (UTF-8 text strings)
   - Binary data (Uint8Array byte strings)
   - Booleans and null values
   - Date objects (with semantic tagging)
   - Arrays (with nesting support)
-  - Objects/Maps (with nesting support)
-- 🎯 **Spec compliant** - Follows RFC 8949 CBOR specification
-- ✨ **Modern TypeScript** - Full type safety and modern ES2020+ features
+  - Plain objects (encoded as string-keyed CBOR maps)
+- 🎯 **CBOR interoperability** - Supports a subset of RFC 8949
+- ✨ **TypeScript declarations** - Recursive types for supported values
 - 🧪 **Well tested** - Comprehensive test suite with reference implementation comparison
 
 ## Installation
@@ -77,13 +77,14 @@ const decoded = CBOR.unpack(encoded);
 
 ## API Reference
 
-### `CBOR.pack(value: any): Uint8Array`
+### `CBOR.pack(value: CBORIO): Uint8Array`
 
 Encodes a JavaScript value into CBOR binary format.
 
 **Parameters:**
 
-- `value` - The value to encode (string, number, boolean, null, Date, Uint8Array, Array, Object)
+- `value` is a string, number, boolean, null, Date, Uint8Array, array, or plain object. Arrays and objects can contain
+  any supported value.
 
 **Returns:** `Uint8Array` - The CBOR-encoded binary data
 
@@ -93,13 +94,13 @@ Encodes a JavaScript value into CBOR binary format.
 const binary = CBOR.pack({ message: "Hello", count: 42 });
 ```
 
-### `CBOR.unpack(data: Uint8Array): any`
+### `CBOR.unpack(data: Uint8Array): CBORIO`
 
-Decodes CBOR binary data back into a JavaScript value.
+Decodes exactly one CBOR item. Empty input, truncated items, and trailing bytes raise errors.
 
 **Parameters:**
 
-- `data` - The CBOR binary data to decode
+- `data` contains the CBOR item.
 
 **Returns:** The decoded JavaScript value
 
@@ -111,17 +112,19 @@ const value = CBOR.unpack(binaryData);
 
 ## Supported Data Types
 
-| JavaScript Type    | CBOR Major Type            | Notes                         |
-| ------------------ | -------------------------- | ----------------------------- |
-| `number` (integer) | 0 (unsigned), 1 (negative) | Full 64-bit integer support   |
-| `number` (float)   | 7 (float64)                | IEEE 754 double precision     |
-| `string`           | 3 (text string)            | UTF-8 encoded                 |
-| `Uint8Array`       | 2 (byte string)            | Binary data, preserves bytes  |
-| `boolean`          | 7 (simple values)          | `true` (21), `false` (20)     |
-| `null`             | 7 (simple value 22)        | JavaScript null               |
-| `Date`             | 6 (semantic tag) + payload | Tag 1 (epoch timestamp)       |
-| `Array`            | 4 (array)                  | Supports nested arrays        |
-| `Object`           | 5 (map)                    | String keys, supports nesting |
+| JavaScript Type    | CBOR Major Type            | Notes                                                                    |
+| ------------------ | -------------------------- | ------------------------------------------------------------------------ |
+| `number` (integer) | 0 (unsigned), 1 (negative) | JavaScript safe-integer range (−2⁵³ + 1 to 2⁵³ − 1)                      |
+| `number` (float)   | 7 (floating-point)         | Encodes finite values as float64. Decodes float16, float32, and float64. |
+| `string`           | 3 (text string)            | UTF-8 encoded                                                            |
+| `Uint8Array`       | 2 (byte string)            | Binary data, preserves bytes                                             |
+| `boolean`          | 7 (simple values)          | `true` (21), `false` (20)                                                |
+| `null`             | 7 (simple value 22)        | JavaScript null                                                          |
+| `Date`             | 6 (semantic tag) + payload | Encodes tag 1 in epoch seconds. Decodes tags 0 and 1.                    |
+| `Array`            | 4 (array)                  | Supports nested arrays                                                   |
+| Plain object       | 5 (map)                    | String keys, supports nesting                                            |
+
+`Map` instances and custom tagged values are unsupported and raise errors.
 
 ## Advanced Usage
 
@@ -164,13 +167,11 @@ const document = {
 };
 
 const packedDoc = CBOR.pack(document);
-const unpackedDoc = CBOR.unpack(packedDoc);
+const unpackedDoc = CBOR.unpack(packedDoc) as typeof document;
 
 console.log(unpackedDoc.thumbnail instanceof Uint8Array); // true
 console.log(unpackedDoc.attachments[0].data instanceof Uint8Array); // true
 ```
-
-### Complex Nested Structures
 
 ### Complex Nested Structures
 
@@ -204,7 +205,7 @@ const complexData = {
 const encoded = CBOR.pack(complexData);
 console.log(`Encoded size: ${encoded.length} bytes`);
 
-const decoded = CBOR.unpack(encoded);
+const decoded = CBOR.unpack(encoded) as typeof complexData;
 console.log(decoded.users[0].lastSeen instanceof Date); // true
 console.log(decoded.users[0].avatar instanceof Uint8Array); // true
 console.log(decoded.settings.encryptionKey instanceof Uint8Array); // true
@@ -214,30 +215,17 @@ console.log(decoded.settings.encryptionKey instanceof Uint8Array); // true
 
 ```ts
 try {
-	const result = CBOR.unpack(invalidData);
+	CBOR.unpack(Uint8Array.of(0x18)); // A truncated integer
 } catch (error) {
-	console.error("Failed to decode CBOR:", error.message);
-}
-
-// Encoding errors
-try {
-	CBOR.pack(Symbol("cannot-encode")); // Will throw
-} catch (error) {
-	console.error("Cannot encode value:", error.message);
+	console.error("Failed to decode CBOR:", error);
 }
 ```
 
-## Performance Characteristics
-
-- **Memory efficient**: encoding/decoding with minimal allocations
-- **Speed optimized**: Fast path for common data types
-- **Small footprint**: Zero dependencies, compact library size
-
 ## Compatibility
 
-- **Node.js**: Runtimes compatible with NodeJS 16.x and above
-- **Browsers**: Modern browsers with TypedArray support
-- **TypeScript**: 5.0+
+- **Node.js** 24 and later. The npm package includes ESM JavaScript and TypeScript declarations.
+- **Browsers** with ES2022 support and a bundler or native ES module loading.
+- **TypeScript** 5.0 and later.
 
 ## Development
 
@@ -252,22 +240,18 @@ bun install
 # Run tests
 bun test
 
+# Build JavaScript and type declarations
+bun run build
+
 # Format code
 bun run fmt
 ```
 
 ## Standards Compliance
 
-This library implements the CBOR specification as defined in:
-
-- [RFC 8949: Concise Binary Object Representation (CBOR)](https://tools.ietf.org/rfc/rfc8949.html)
-
-Supported CBOR features:
-
-- All major types (0-7)
-- Definite-length encoding for strings, arrays, and maps
-- IEEE 754 floating-point numbers (float64)
-- Semantic tagging for dates (tag 1)
+This library implements the subset of [RFC 8949](https://www.rfc-editor.org/rfc/rfc8949.html) listed under Supported
+Data Types. Strings, arrays, and maps use definite lengths. Indefinite-length items, non-string map keys, integers
+outside the safe-integer range, and tags other than dates are unsupported.
 
 ## License
 

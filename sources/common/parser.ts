@@ -25,21 +25,6 @@ export function parseCBORHeader(
 }
 
 /**
- * Validates that the major type matches the expected type
- */
-export function validateMajorType(
-	actualMajorType: number,
-	expectedMajorType: number,
-	typeName: string,
-): void {
-	if (actualMajorType !== expectedMajorType) {
-		throw new Error(
-			`Invalid major type for ${typeName}: expected ${expectedMajorType >> 5}, got ${actualMajorType >> 5}`,
-		);
-	}
-}
-
-/**
  * Creates a properly aligned DataView for reading multi-byte values
  */
 export function createDataView(

@@ -2,12 +2,10 @@
   "lockfileVersion": 1,
   "workspaces": {
     "": {
-      "name": "mcbor",
+      "name": "cbor-ts",
       "devDependencies": {
         "@types/bun": "latest",
         "cbor2": "^2.0.1",
-      },
-      "peerDependencies": {
         "typescript": "^5.0.0",
       },
     },

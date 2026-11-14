@@ -1,4 +1,4 @@
-import { getUint64, setUint64 } from "./bytes";
+import { getUint64, setUint64 } from "./bytes.js";
 
 // CBOR additional information values
 export const DIRECT_ENCODING_MAX = 23;
@@ -93,24 +93,5 @@ export function decodeLength(
 		throw new Error(
 			`Invalid additional info for ${context}: ${additionalInfo}`,
 		);
-	}
-}
-
-/**
- * Calculates how many bytes an encoded length/value will consume
- */
-export function calculateEncodedSize(additionalInfo: number): number {
-	if (additionalInfo <= DIRECT_ENCODING_MAX) {
-		return 1;
-	} else if (additionalInfo === UINT8_ADDITIONAL_DATA) {
-		return 2;
-	} else if (additionalInfo === UINT16_ADDITIONAL_DATA) {
-		return 3;
-	} else if (additionalInfo === UINT32_ADDITIONAL_DATA) {
-		return 5;
-	} else if (additionalInfo === UINT64_ADDITIONAL_DATA) {
-		return 9;
-	} else {
-		throw new Error(`Invalid additional info: ${additionalInfo}`);
 	}
 }
