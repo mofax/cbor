@@ -75,19 +75,20 @@ export function decodeLength(
 		const view = new DataView(data.buffer, data.byteOffset + offset + 1, 4);
 		return { length: view.getUint32(0, false), headerSize: 5 };
 	} else if (additionalInfo === UINT64_ADDITIONAL_DATA) {
-		if (offset + 9 > data.length) {
-			throw new Error(`Insufficient data for uint64 ${context}`);
-		}
-		const view = new DataView(data.buffer, data.byteOffset + offset + 1, 8);
-		const bigintLength = getUint64(view, 0);
-
-		// Check if the length fits in JavaScript's safe integer range
-		if (bigintLength <= BigInt(Number.MAX_SAFE_INTEGER)) {
-			return { length: Number(bigintLength), headerSize: 9 };
-		} else {
-			throw new Error(`${context} ${bigintLength} exceeds JavaScript's safe integer range`);
-		}
+		return { length: decodeUint64Length(data, offset + 1, context), headerSize: 1 + UINT64_SIZE };
 	} else {
 		throw new Error(`Invalid additional info for ${context}: ${additionalInfo}`);
 	}
+}
+
+function decodeUint64Length(data: Uint8Array, offset: number, context: string): number {
+	if (offset + UINT64_SIZE > data.length) {
+		throw new Error(`Insufficient data for uint64 ${context}`);
+	}
+	const view = new DataView(data.buffer, data.byteOffset + offset, UINT64_SIZE);
+	const length = getUint64(view, 0);
+	if (length > BigInt(Number.MAX_SAFE_INTEGER)) {
+		throw new Error(`${context} ${length} exceeds JavaScript's safe integer range`);
+	}
+	return Number(length);
 }

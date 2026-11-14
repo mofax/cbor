@@ -35,29 +35,60 @@ export function encodeCBORValue(value: unknown): Uint8Array {
 	} else if (Array.isArray(value)) {
 		return encodeArray(value, encodeCBORValue);
 	} else if (typeof value === "object") {
-		const prototype = Object.getPrototypeOf(value);
-		if (prototype === Object.prototype || prototype === null) {
-			return encodeMap(value, encodeCBORValue);
-		}
-		throw new TypeError("CBOR maps require plain objects with string keys");
+		return encodePlainObject(value);
 	}
 	throw new TypeError(`Unsupported CBOR type: ${typeof value}`);
 }
 
+function encodePlainObject(value: object): Uint8Array {
+	const prototype = Object.getPrototypeOf(value);
+	if (prototype === Object.prototype || prototype === null) {
+		return encodeMap(value, encodeCBORValue);
+	}
+	throw new TypeError("CBOR maps require plain objects with string keys");
+}
+
+function decodeSimple(data: Uint8Array, offset: number, additionalInfo: number): Decoded<CBORIO> {
+	switch (additionalInfo) {
+		case 20:
+		case 21:
+			return { value: additionalInfo === 21, nextOffset: offset + 1 };
+		case 22:
+			return { value: null, nextOffset: offset + 1 };
+		default:
+			return decodeFloat(data, offset, additionalInfo);
+	}
+}
+
+function decodeStringPayload(
+	data: Uint8Array,
+	offset: number,
+	length: number,
+	majorType: typeof Major.Text | typeof Major.Bytes,
+): Decoded<string | Uint8Array> {
+	if (length > data.length - offset) {
+		throw new Error(`Insufficient data for string content at offset ${offset}`);
+	}
+	const nextOffset = offset + length;
+	const payload = data.subarray(offset, nextOffset);
+	const value = majorType === Major.Text ? utf8Decoder.decode(payload) : new Uint8Array(payload);
+	return { value, nextOffset };
+}
+
 export function decodeCBORValue(data: Uint8Array): Decoded<CBORIO> {
+	function readTaggedValue(tag: number, offset: number): Decoded<Date> {
+		if (tag !== 0 && tag !== 1) {
+			throw new Error(`Unsupported tag: ${tag}`);
+		}
+		const { value, nextOffset } = readValue(offset);
+		return { value: decodeDate(tag, value), nextOffset };
+	}
+
 	function readValue(offset: number): Decoded<CBORIO> {
 		const { majorType, additionalInfo } = parseCBORHeader(data, offset);
 
 		if (majorType === Major.Simple) {
-			switch (additionalInfo) {
-				case 20:
-				case 21:
-					return { value: additionalInfo === 21, nextOffset: offset + 1 };
-				case 22:
-					return { value: null, nextOffset: offset + 1 };
-				default:
-					return decodeFloat(data, offset, additionalInfo);
-			}
+			return decodeSimple(data, offset, additionalInfo);
 		}
 
 		const { length: argument, headerSize } = decodeLength(
@@ -78,27 +109,14 @@ export function decodeCBORValue(data: Uint8Array): Decoded<CBORIO> {
 				return { value, nextOffset: bodyOffset };
 			}
 			case Major.Text:
-			case Major.Bytes: {
-				if (argument > data.length - bodyOffset) {
-					throw new Error(`Insufficient data for string content at offset ${bodyOffset}`);
-				}
-				const nextOffset = bodyOffset + argument;
-				const payload = data.subarray(bodyOffset, nextOffset);
-				const value =
-					majorType === Major.Text ? utf8Decoder.decode(payload) : new Uint8Array(payload);
-				return { value, nextOffset };
-			}
+			case Major.Bytes:
+				return decodeStringPayload(data, bodyOffset, argument, majorType);
 			case Major.Array:
 				return decodeArray(argument, bodyOffset, readValue);
 			case Major.Map:
 				return decodeMap(argument, bodyOffset, readValue);
-			case Major.Tag: {
-				if (argument !== 0 && argument !== 1) {
-					throw new Error(`Unsupported tag: ${argument}`);
-				}
-				const { value, nextOffset } = readValue(bodyOffset);
-				return { value: decodeDate(argument, value), nextOffset };
-			}
+			case Major.Tag:
+				return readTaggedValue(argument, bodyOffset);
 			default:
 				throw new Error(`Unsupported major type: ${majorType >> 5}`);
 		}
