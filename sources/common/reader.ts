@@ -1,4 +1,3 @@
-import { joinChunks } from "./bytes.js";
 import {
 	decodeTag,
 	type CBORArray,
@@ -15,7 +14,7 @@ import {
 	UINT8_ADDITIONAL_DATA,
 } from "./length.js";
 import { IncompleteCBOR, requireBytes } from "./parser.js";
-import { DecodedMap } from "../types/mapkey.js";
+import { DecodedMap, MapKeyIndex } from "../types/mapkey.js";
 import { decodeNegativeInteger, floatSize, readFloat } from "../types/number.js";
 import { readExtendedSimple, readSimple } from "../types/simple.js";
 import { checkStringChunk, readStringPayload } from "../types/string.js";
@@ -23,13 +22,19 @@ import { checkStringChunk, readStringPayload } from "../types/string.js";
 export class CompleteReader {
 	offset = 0;
 	private view?: DataView;
+	private keys?: MapKeyIndex;
 
 	constructor(
 		private readonly data: Uint8Array,
-		private readonly options: DecodeOptions = {},
+		private readonly options?: DecodeOptions,
 	) {}
 
-	readValue(): CBORIO {
+	readItem(): CBORIO {
+		this.keys = undefined;
+		return this.readValue();
+	}
+
+	private readValue(): CBORIO {
 		const header = this.readHeader();
 		const major = header & 0xe0;
 		const info = header & 0x1f;
@@ -44,7 +49,8 @@ export class CompleteReader {
 				return this.readSimpleValue(info);
 			case Major.Tag: {
 				const tag = this.readArgument(info, "CBOR argument");
-				return decodeTag(tag, this.readValue(), this.options);
+				const ownedBytes = (this.data[this.offset] & 0xe0) === Major.Bytes;
+				return decodeTag(tag, this.readValue(), this.options, ownedBytes);
 			}
 			default:
 				return this.readContainer(major, info);
@@ -130,7 +136,11 @@ export class CompleteReader {
 		const map = new DecodedMap();
 		for (let index = 0; length === undefined ? !this.endOfContainer() : index < length; index++) {
 			const key = this.readValue();
-			map.checkKey(key);
+			const index =
+				this.options === undefined && key !== null && typeof key === "object"
+					? (this.keys ??= new MapKeyIndex())
+					: undefined;
+			map.checkKey(key, index);
 			map.set(key, this.readValue());
 		}
 		return map.value();
@@ -146,19 +156,41 @@ export class CompleteReader {
 	}
 
 	private readChunks(major: typeof Major.Text | typeof Major.Bytes): string | Uint8Array {
-		const text: string[] = [];
-		const bytes: Uint8Array[] = [];
+		if (major === Major.Text) {
+			const chunks: string[] = [];
+			while (!this.endOfContainer()) {
+				chunks.push(this.readString(major, this.readChunkLength(major)) as string);
+			}
+			return chunks.join("");
+		}
+		const ranges: number[] = [];
+		let length = 0;
 		while (!this.endOfContainer()) {
-			const header = this.readHeader();
-			const info = header & 0x1f;
-			checkStringChunk(major, header & 0xe0, info);
-			const chunk = this.readString(major, this.readLength(info));
-			if (typeof chunk === "string") {
-				text.push(chunk);
-			} else {
-				bytes.push(chunk);
+			const size = this.readChunkLength(major);
+			if (size > this.data.length - this.offset) {
+				throw new IncompleteCBOR(`Insufficient data for string content at offset ${this.offset}`);
+			}
+			if (size > 0) {
+				ranges.push(this.offset, this.offset + size);
+				length += size;
+				this.offset += size;
 			}
 		}
-		return major === Major.Text ? text.join("") : joinChunks(bytes);
+		const bytes = new Uint8Array(length);
+		let target = 0;
+		for (let index = 0; index < ranges.length; index += 2) {
+			const start = ranges[index];
+			const end = ranges[index + 1];
+			bytes.set(this.data.subarray(start, end), target);
+			target += end - start;
+		}
+		return bytes;
+	}
+
+	private readChunkLength(major: typeof Major.Text | typeof Major.Bytes): number {
+		const header = this.readHeader();
+		const info = header & 0x1f;
+		checkStringChunk(major, header & 0xe0, info);
+		return this.readLength(info);
 	}
 }

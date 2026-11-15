@@ -1,8 +1,6 @@
-import { joinChunks, joinIndefinite } from "../common/bytes.js";
-import type { CBORReader, ReadResult } from "../common/codec.js";
 import { BREAK, INDEFINITE_LENGTH, Major } from "../common/common.js";
-import { argumentSize, decodeLength, writeArgumentAt } from "../common/length.js";
-import { IncompleteCBOR, parseCBORHeader } from "../common/parser.js";
+import { argumentSize, DIRECT_ENCODING_MAX, writeArgumentAt } from "../common/length.js";
+import { IncompleteCBOR } from "../common/parser.js";
 import type { ByteWriter } from "../common/writer.js";
 
 const utf8Encoder = new TextEncoder();
@@ -11,14 +9,43 @@ const utf8Decoder = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true });
 type StringMajor = typeof Major.Text | typeof Major.Bytes;
 
 export function encodeString(value: string, indefinite = false): Uint8Array {
-	if (indefinite) {
-		return joinIndefinite(Major.Text, value.length === 0 ? [] : [encodeString(value)]);
+	if (indefinite && value.length === 0) {
+		return Uint8Array.of(Major.Text | INDEFINITE_LENGTH, BREAK);
+	}
+	const start = indefinite ? 1 : 0;
+	if (value.length <= DIRECT_ENCODING_MAX) {
+		const ascii = encodeShortAscii(value, start);
+		if (ascii) {
+			return ascii;
+		}
 	}
 	const bytes = utf8Encoder.encode(value);
 	const size = argumentSize(bytes.length);
-	const result = new Uint8Array(size + bytes.length);
-	writeArgumentAt(result, 0, Major.Text, bytes.length, size);
-	result.set(bytes, size);
+	const result = new Uint8Array(size + bytes.length + start * 2);
+	writeArgumentAt(result, start, Major.Text, bytes.length, size);
+	result.set(bytes, start + size);
+	if (indefinite) {
+		result[0] = Major.Text | INDEFINITE_LENGTH;
+		result[result.length - 1] = BREAK;
+	}
+	return result;
+}
+
+function encodeShortAscii(value: string, start: number): Uint8Array | undefined {
+	for (let index = 0; index < value.length; index++) {
+		if (value.charCodeAt(index) > 0x7f) {
+			return undefined;
+		}
+	}
+	const result = new Uint8Array(1 + value.length + start * 2);
+	result[start] = Major.Text | value.length;
+	for (let index = 0; index < value.length; index++) {
+		result[start + 1 + index] = value.charCodeAt(index);
+	}
+	if (start !== 0) {
+		result[0] = Major.Text | INDEFINITE_LENGTH;
+		result[result.length - 1] = BREAK;
+	}
 	return result;
 }
 
@@ -26,7 +53,14 @@ export function writeText(writer: ByteWriter, value: string, indefinite: boolean
 	if (indefinite) {
 		writer.writeByte(Major.Text | INDEFINITE_LENGTH);
 	}
-	if ((!indefinite || value.length > 0) && !writer.writeShortAscii(value, Major.Text)) {
+	if (
+		(!indefinite || value.length > 0) &&
+		!writer.writeShortAscii(value, Major.Text) &&
+		!(
+			value.length > DIRECT_ENCODING_MAX &&
+			writer.writeUtf8IntoSpareCapacity(value, Major.Text, utf8Encoder)
+		)
+	) {
 		const bytes = utf8Encoder.encode(value);
 		writer.writeArgument(Major.Text, bytes.length);
 		writer.writeBytes(bytes);
@@ -34,40 +68,6 @@ export function writeText(writer: ByteWriter, value: string, indefinite: boolean
 	if (indefinite) {
 		writer.writeByte(BREAK);
 	}
-}
-
-export function* decodeString(
-	major: StringMajor,
-	length: number | undefined,
-	offset: number,
-	reader: CBORReader,
-): ReadResult<string | Uint8Array> {
-	if (length !== undefined) {
-		const value = yield* reader.read((data) => readStringPayload(data, major, offset, length));
-		return { value, nextOffset: offset + length };
-	}
-
-	const text: string[] = [];
-	const bytes: Uint8Array[] = [];
-	while (!(yield* reader.isBreak(offset))) {
-		const header = yield* reader.read((data) => parseCBORHeader(data, offset));
-		checkStringChunk(major, header.majorType, header.additionalInfo);
-		const chunk = yield* reader.read((data) => decodeLength(data, offset, header.additionalInfo));
-		offset += chunk.headerSize;
-		const payload = yield* reader.read((data) =>
-			readStringPayload(data, major, offset, chunk.length),
-		);
-		if (typeof payload === "string") {
-			text.push(payload);
-		} else {
-			bytes.push(payload);
-		}
-		offset += chunk.length;
-	}
-	return {
-		value: major === Major.Text ? text.join("") : joinChunks(bytes),
-		nextOffset: offset + 1,
-	};
 }
 
 export function checkStringChunk(

@@ -33,3 +33,18 @@ JavaScript decoder on the same machine, run the suite again with that addon disa
 ```sh
 CBOR_NATIVE_ACCELERATION_DISABLED=true bun run --cwd benchmarks bench
 ```
+
+## Library performance checks
+
+Run the focused suite to measure typed arrays, bignums, nested composite map keys, text, byte strings, and fragmented
+streams. Each fixture verifies its round trip before timing. The suite reports the median of five timed batches after
+one warm-up batch, with inputs and stream chunks prepared outside the timed loops.
+
+```sh
+bun benchmarks/perf.ts
+bun benchmarks/perf.ts --filter "composite map keys"
+bun run build
+node benchmarks/perf.ts --module dist/main.js
+```
+
+Pass `--module` the entry point of a separately built baseline to compare revisions using the same fixtures and runtime.

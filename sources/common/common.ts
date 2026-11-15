@@ -18,12 +18,12 @@ export const BREAK = 0xff;
  * - `Simple`: Simple values and floating-point numbers (major type 7)
  */
 export const Major = {
-	Unsigned: 0 << 5,
-	Negative: 1 << 5,
-	Bytes: 2 << 5,
-	Text: 3 << 5,
-	Array: 4 << 5,
-	Map: 5 << 5,
-	Tag: 6 << 5,
-	Simple: 7 << 5,
+	Unsigned: 0x00,
+	Negative: 0x20,
+	Bytes: 0x40,
+	Text: 0x60,
+	Array: 0x80,
+	Map: 0xa0,
+	Tag: 0xc0,
+	Simple: 0xe0,
 } as const;

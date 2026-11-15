@@ -1,10 +1,13 @@
-import type { Decoded } from "../common/codec.js";
 import { Major, MAX_U64 } from "../common/common.js";
 import { encodeLength } from "../common/length.js";
-import { createDataView } from "../common/parser.js";
-import { writeByteString } from "./bytes.js";
 import { encodeFloat64 } from "./float64.js";
 import type { ByteWriter } from "../common/writer.js";
+
+const { toHex, setFromHex } = Uint8Array.prototype as Uint8Array & {
+	toHex?(): string;
+	setFromHex?(hex: string): unknown;
+};
+const hexPairs = Array.from({ length: 256 }, (_, value) => value.toString(16).padStart(2, "0"));
 
 export function encodeNumber(value: number, deterministic = false): Uint8Array {
 	if (!Number.isFinite(value)) {
@@ -43,24 +46,47 @@ export function writeBigInt(writer: ByteWriter, value: bigint): void {
 	}
 
 	const hex = magnitude.toString(16);
-	const bytes = new Uint8Array(Math.ceil(hex.length / 2));
-	const padded = hex.padStart(bytes.length * 2, "0");
-	for (let i = 0; i < bytes.length; i++) {
-		bytes[i] = Number.parseInt(padded.slice(i * 2, i * 2 + 2), 16);
-	}
+	const length = Math.ceil(hex.length / 2);
 	writer.writeByte(Major.Tag | (negative ? 3 : 2));
-	writeByteString(writer, bytes, false);
+	writer.writeArgument(Major.Bytes, length);
+	const bytes = writer.reserveBytes(length);
+	const odd = hex.length & 1;
+	if (setFromHex) {
+		setFromHex.call(bytes, odd ? `0${hex}` : hex);
+		return;
+	}
+	if (odd) {
+		bytes[0] = hexDigit(hex.charCodeAt(0));
+	}
+	for (let index = odd, offset = odd; index < hex.length; index += 2, offset++) {
+		bytes[offset] = (hexDigit(hex.charCodeAt(index)) << 4) | hexDigit(hex.charCodeAt(index + 1));
+	}
+}
+
+function hexDigit(code: number): number {
+	return code <= 57 ? code - 48 : code - 87;
 }
 
 export function decodeBignum(tag: 2 | 3, value: unknown): bigint {
 	if (!(value instanceof Uint8Array)) {
 		throw new Error(`Bignum tag ${tag} requires a byte string`);
 	}
-	let magnitude = 0n;
-	for (const byte of value) {
-		magnitude = (magnitude << 8n) | BigInt(byte);
-	}
+	const magnitude =
+		value.length === 0 ? 0n : BigInt(`0x${toHex ? toHex.call(value) : bytesToHex(value)}`);
 	return tag === 2 ? magnitude : -1n - magnitude;
+}
+
+function bytesToHex(bytes: Uint8Array): string {
+	const chunks: string[] = [];
+	for (let offset = 0; offset < bytes.length;) {
+		const end = Math.min(offset + 256, bytes.length);
+		let chunk = "";
+		while (offset < end) {
+			chunk += hexPairs[bytes[offset++]];
+		}
+		chunks.push(chunk);
+	}
+	return chunks.join("");
 }
 
 export function decodeNegativeInteger(argument: number | bigint): number | bigint {
@@ -101,18 +127,6 @@ function exactHalfBits(value: number, float32Bits: number): number | undefined {
 		return sign | (exponent << 10) | ((float32Bits >>> 13) & 0x3ff);
 	}
 	return undefined;
-}
-
-export function decodeFloat(
-	data: Uint8Array,
-	offset: number,
-	additionalInfo: number,
-): Decoded<number> {
-	const size = floatSize(additionalInfo);
-	return {
-		value: readFloat(createDataView(data, offset + 1, size), 0, size),
-		nextOffset: offset + 1 + size,
-	};
 }
 
 export function floatSize(additionalInfo: number): number {

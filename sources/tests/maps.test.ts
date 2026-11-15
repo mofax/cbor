@@ -114,6 +114,29 @@ describe("CBOR maps with arbitrary keys", () => {
 		expect(Array.from(decoded.keys())).toEqual(["2", "10", "3", 1]);
 	});
 
+	test("promotes text-key maps in wire order at the array-index boundary", () => {
+		const source = new Map<CBORIO, CBORIO>([
+			["leading", 0],
+			["4294967295", 1],
+			["01", 2],
+			["4294967294", 3],
+			["2", 4],
+			[false, 5],
+		]);
+		const decoded = CBOR.unpack(CBOR.pack(source)) as TestMap;
+		expect(Array.from(decoded.entries())).toEqual(Array.from(source.entries()));
+	});
+
+	test("rejects composite keys with equal entries in different orders", async () => {
+		const first = CBOR.packSequence([{ a: [1], b: 2 }, false]);
+		const second = CBOR.packSequence([{ b: 2, a: [1] }, true]);
+		const bytes = Uint8Array.of(0xa2, ...first, ...second);
+		expect(() => CBOR.unpack(bytes)).toThrow("Duplicate CBOR map key");
+		await expect(
+			CBOR.unpackStream([bytes.subarray(0, 7), bytes.subarray(7)]).next(),
+		).rejects.toThrow("Duplicate CBOR map key");
+	});
+
 	test.each([{ indefinite: false }, { indefinite: true }, { deterministic: true }])(
 		"rejects object keys that become identical after UTF-8 replacement with %o",
 		(options) => {
@@ -166,6 +189,16 @@ describe("CBOR maps with arbitrary keys", () => {
 });
 
 describe("Deterministic map encoding", () => {
+	test("rejects equal sorted key bytes even when the original keys are distinct", () => {
+		const entries = new Map<CBORIO, CBORIO>([
+			[1n, false],
+			[2, null],
+			[1, true],
+		]);
+		expect(() => deterministicPack(entries, { deterministic: true })).toThrow(
+			"Duplicate CBOR map key",
+		);
+	});
 	test("sorts text keys by their encoded bytes at every depth", () => {
 		const left = { aa: { e: 3, d: 2 }, z: 1 };
 		const right = { z: 1, aa: { d: 2, e: 3 } };

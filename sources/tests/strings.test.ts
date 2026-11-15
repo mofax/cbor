@@ -57,4 +57,14 @@ describe("strings", () => {
 		const decode1 = CBOR.unpack(str1);
 		expect(decode1).toBe(longStr);
 	});
+
+	test("writes UTF-8 into spare writer capacity without shifting later values", () => {
+		const prefix = new Uint8Array(64).fill(7);
+		const text = "🌡️東京".repeat(6) + "\ud800";
+		const replacement = "🌡️東京".repeat(6) + "\ufffd";
+		const value = [prefix, prefix, text, 42];
+		const expected = [prefix, prefix, replacement, 42];
+		expect(CBOR.pack(value)).toEqual(encode(expected));
+		expect(CBOR.unpack(CBOR.pack(value, { indefinite: true }))).toEqual(expected);
+	});
 });

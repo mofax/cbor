@@ -1,8 +1,5 @@
-import type { Decoded } from "../common/codec.js";
 import { Major } from "../common/common.js";
-import { createDataView } from "../common/parser.js";
 import type { ByteWriter } from "../common/writer.js";
-import { decodeFloat } from "./number.js";
 
 export class CBORSimple {
 	constructor(public readonly code: number) {}
@@ -18,24 +15,6 @@ export function writeSimple(writer: ByteWriter, code: number): void {
 		writer.writeByte(Major.Simple | 24);
 		writer.writeByte(code);
 	}
-}
-
-export function decodeSimple(
-	data: Uint8Array,
-	offset: number,
-	additionalInfo: number,
-): Decoded<boolean | null | undefined | CBORSimple | number> {
-	const nextOffset = offset + 1;
-	if (additionalInfo < 24) {
-		return { value: readSimple(additionalInfo), nextOffset };
-	}
-	if (additionalInfo === 24) {
-		return {
-			value: readExtendedSimple(createDataView(data, nextOffset, 1).getUint8(0)),
-			nextOffset: nextOffset + 1,
-		};
-	}
-	return decodeFloat(data, offset, additionalInfo);
 }
 
 export function readSimple(code: number): boolean | null | undefined | CBORSimple {

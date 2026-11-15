@@ -16,8 +16,11 @@ export class ByteWriter {
 	private dataView?: DataView;
 	offset = 0;
 
-	finish(): Uint8Array {
-		return this.offset === this.data.length ? this.data : this.data.slice(0, this.offset);
+	finish(exact: boolean): Uint8Array {
+		if (this.offset === this.data.length) {
+			return this.data;
+		}
+		return exact ? this.data.slice(0, this.offset) : this.data.subarray(0, this.offset);
 	}
 
 	writeByte(byte: number): void {
@@ -29,6 +32,22 @@ export class ByteWriter {
 		this.reserve(bytes.length);
 		this.data.set(bytes, this.offset);
 		this.offset += bytes.length;
+	}
+
+	writeReversedBytes(bytes: Uint8Array, width: number): void {
+		const target = this.reserveBytes(bytes.length);
+		for (let start = 0; start < bytes.length; start += width) {
+			for (let index = 0; index < width; index++) {
+				target[start + index] = bytes[start + width - 1 - index];
+			}
+		}
+	}
+
+	reserveBytes(size: number): Uint8Array<ArrayBuffer> {
+		this.reserve(size);
+		const start = this.offset;
+		this.offset += size;
+		return this.data.subarray(start, this.offset);
 	}
 
 	writeShortAscii(text: string, major: number): boolean {
@@ -47,6 +66,20 @@ export class ByteWriter {
 		}
 		this.data[this.offset] = major | size;
 		this.offset = start + size;
+		return true;
+	}
+
+	writeUtf8IntoSpareCapacity(text: string, major: number, encoder: TextEncoder): boolean {
+		const size = argumentSize(text.length);
+		const start = this.offset + size;
+		const maxBytes = text.length * 3;
+		if (maxBytes > this.data.length - start || size !== argumentSize(maxBytes)) {
+			return false;
+		}
+		// Both UTF-8 size bounds have the same argument width, so the payload stays in place.
+		const { written } = encoder.encodeInto(text, this.data.subarray(start, start + maxBytes));
+		this.writeArgument(major, written);
+		this.offset += written;
 		return true;
 	}
 
@@ -114,7 +147,7 @@ export class ByteWriter {
 		const required = this.offset + size;
 		if (required > this.data.length) {
 			const next = new Uint8Array(Math.max(required, this.data.length * 2));
-			next.set(this.data);
+			next.set(this.data.subarray(0, this.offset));
 			this.data = next;
 			this.dataView = undefined;
 		}

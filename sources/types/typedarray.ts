@@ -44,7 +44,11 @@ for (const [tag, ctor] of typedArrayTags) {
 
 function reverseElements(bytes: Uint8Array, width: number): void {
 	for (let offset = 0; offset < bytes.length; offset += width) {
-		bytes.subarray(offset, offset + width).reverse();
+		for (let left = offset, right = offset + width - 1; left < right; left++, right--) {
+			const first = bytes[left];
+			bytes[left] = bytes[right];
+			bytes[right] = first;
+		}
 	}
 }
 
@@ -57,19 +61,19 @@ export function writeTypedArray(
 		if (value instanceof ctor) {
 			const width = ctor.BYTES_PER_ELEMENT;
 			const view = new Uint8Array(value.buffer, value.byteOffset, value.byteLength);
-			const bytes = nativeLittleEndian && width > 1 ? new Uint8Array(view) : view;
-			if (bytes !== view) {
-				reverseElements(bytes, width);
-			}
 			writer.writeArgument(Major.Tag, tag);
-			writeByteString(writer, bytes, indefinite);
+			writeByteString(writer, view, indefinite, nativeLittleEndian ? width : 1);
 			return;
 		}
 	}
 	throw new TypeError("Unsupported CBOR typed array");
 }
 
-export function decodeTypedArray(tag: number | bigint, value: unknown): CBORTypedArray | undefined {
+export function decodeTypedArray(
+	tag: number | bigint,
+	value: unknown,
+	ownedBytes: boolean,
+): CBORTypedArray | undefined {
 	const format = decodeTags.get(tag);
 	if (!format) {
 		return undefined;
@@ -82,7 +86,8 @@ export function decodeTypedArray(tag: number | bigint, value: unknown): CBORType
 	if (value.byteLength % width !== 0) {
 		throw new Error(`Invalid byte length for typed array tag ${tag}`);
 	}
-	const bytes = new Uint8Array(value);
+	// Direct byte-string payloads have an exact-sized, unshared buffer.
+	const bytes = ownedBytes ? (value as Uint8Array<ArrayBuffer>) : new Uint8Array(value);
 	if (width > 1 && format.littleEndian !== nativeLittleEndian) {
 		reverseElements(bytes, width);
 	}

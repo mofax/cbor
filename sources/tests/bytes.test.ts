@@ -147,6 +147,33 @@ describe("Tagged typed arrays (RFC 8746)", () => {
 		expect(decoded).toEqual(value);
 	});
 
+	test("preserves raw float bits and returns an independent typed-array buffer", () => {
+		const bits = Uint32Array.of(0x7fc00042, 0x80000000);
+		const encoded = packTypedArray(new Float32Array(bits.buffer));
+		expect(encoded).toEqual(bytesFromHex("d851487fc0004280000000"));
+		const decoded = CBOR.unpack(encoded) as Float32Array;
+		encoded.fill(0);
+		expect(new Uint32Array(decoded.buffer)).toEqual(bits);
+	});
+
+	test("keeps byte strings returned by nested tag handlers independent", async () => {
+		const backing = Uint8Array.of(9, 0, 1, 1, 0, 9);
+		const payload = backing.subarray(1, -1);
+		const wire = CBOR.pack(CBOR.tag(65, CBOR.tag(100, null)));
+		const options = { tagHandlers: new Map([[100, () => payload]]) };
+		const complete = CBOR.unpack(wire, options);
+		const streamed = await CBOR.unpackStream(
+			[wire.subarray(0, 3), wire.subarray(3)],
+			options,
+		).next();
+		expect(complete).toEqual(Uint16Array.of(1, 256));
+		expect(streamed.value).toEqual(complete);
+		expect(backing).toEqual(Uint8Array.of(9, 0, 1, 1, 0, 9));
+		payload.fill(0);
+		expect(complete).toEqual(Uint16Array.of(1, 256));
+		expect(streamed.value).toEqual(complete);
+	});
+
 	test.each([
 		["non-byte-string payload", "d85180"],
 		["byte count that is not a multiple of the element width", "d85143000000"],

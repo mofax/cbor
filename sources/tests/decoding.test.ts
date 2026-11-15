@@ -226,6 +226,33 @@ describe("Incremental decoding", () => {
 	const encoded = bytesFromHex("19010062c3a99f4200fffff6");
 	const values = [256, "é", [Uint8Array.of(0, 255)], null];
 
+	test("resumes deeply nested arrays without recursive generator frames", async () => {
+		const depth = 8192;
+		const headers = new Uint8Array(depth).fill(0x81);
+		const stream = CBOR.unpackStream([
+			headers.subarray(0, 4096),
+			headers.subarray(4096),
+			Uint8Array.of(1),
+		]);
+		let { value } = await stream.next();
+		for (let index = 0; index < depth; index++) {
+			if (!Array.isArray(value) || value.length !== 1) {
+				throw new Error(`Missing array at depth ${index}`);
+			}
+			value = value[0];
+		}
+		expect(value).toBe(1);
+		expect((await stream.next()).done).toBe(true);
+	});
+
+	test("copies unread bytes before yielding from a mutable source chunk", async () => {
+		const chunk = Uint8Array.of(1, 0x19, 1);
+		const stream = CBOR.unpackStream([chunk, Uint8Array.of(0)]);
+		expect(await stream.next()).toEqual({ value: 1, done: false });
+		chunk.fill(0);
+		expect(await stream.next()).toEqual({ value: 256, done: false });
+	});
+
 	test("decodes a sequence split at every byte boundary, including empty chunks", async () => {
 		const chunks = [
 			Uint8Array.of(),

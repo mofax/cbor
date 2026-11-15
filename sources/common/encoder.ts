@@ -31,7 +31,12 @@ export function packSequence(items: Iterable<CBORIO>, options?: EncodeOptions): 
 	return encoder.finish();
 }
 
-function encodeValue(value: CBORIO, deterministic: boolean, indefinite: boolean): Uint8Array {
+function encodeValue(
+	value: CBORIO,
+	deterministic: boolean,
+	indefinite: boolean,
+	exact = true,
+): Uint8Array {
 	// These standalone values can allocate their final output directly.
 	switch (typeof value) {
 		case "number":
@@ -51,7 +56,7 @@ function encodeValue(value: CBORIO, deterministic: boolean, indefinite: boolean)
 			}
 			const encoder = new Encoder(deterministic, indefinite);
 			encoder.writeValue(value);
-			return encoder.finish();
+			return encoder.finish(exact);
 		}
 	}
 }
@@ -64,8 +69,8 @@ class Encoder {
 		private readonly indefinite: boolean,
 	) {}
 
-	finish(): Uint8Array {
-		return this.writer.finish();
+	finish(exact = true): Uint8Array {
+		return this.writer.finish(exact);
 	}
 
 	writeValue(value: CBORIO): void {
@@ -146,6 +151,16 @@ class Encoder {
 	}
 
 	private writeMapEntries(entries: [CBORIO, CBORIO][]): void {
+		if (entries.length < 2) {
+			this.startMap(entries.length);
+			if (entries.length === 1) {
+				const [key, value] = entries[0];
+				this.writeValue(key);
+				this.writeValue(value);
+			}
+			this.endMap();
+			return;
+		}
 		if (this.deterministic || entries.some(([key]) => key !== null && typeof key === "object")) {
 			this.writeMap(entries);
 			return;
@@ -170,7 +185,7 @@ class Encoder {
 	private writePlainObject(object: CBORObject): void {
 		const entries = Object.entries(object);
 		if (this.deterministic) {
-			this.writeMap(entries);
+			this.writeMapEntries(entries);
 			return;
 		}
 		this.startMap(entries.length);
@@ -193,25 +208,37 @@ class Encoder {
 	}
 
 	private writeMap(entries: [CBORIO, CBORIO][]): void {
-		const encoded = entries.map(([key, value]) => ({
-			bytes: encodeValue(key, this.deterministic, this.indefinite),
-			key,
-			value,
-		}));
+		let nonTextKeys = 0;
+		const encoded = entries.map(([key, value]) => {
+			if (typeof key !== "string") {
+				nonTextKeys++;
+			}
+			return { bytes: encodeValue(key, this.deterministic, this.indefinite, false), key, value };
+		});
 		if (this.deterministic) {
 			encoded.sort((left, right) => compareBytes(left.bytes, right.bytes));
 		}
 		this.startMap(entries.length);
-		const identities = new Set<string>();
-		const wireKeys = new Set<string>();
+		// Text keys cannot collide with other types, and equal text keys also have equal wire bytes.
+		const identities = nonTextKeys > 1 ? new Set<string>() : undefined;
+		const wireKeys = this.deterministic ? undefined : new Set<string>();
+		let previous: Uint8Array | undefined;
 		for (const { bytes, key, value } of encoded) {
-			const identity = mapKeyIdentity(key);
-			const wireKey = byteIdentity(bytes);
-			if (identities.has(identity) || wireKeys.has(wireKey)) {
+			checkNonTextKey(identities, key);
+			let duplicateWireKey = false;
+			if (wireKeys) {
+				if (nonTextKeys > 1 || typeof key === "string") {
+					const wireKey = byteIdentity(bytes);
+					duplicateWireKey = wireKeys.has(wireKey);
+					wireKeys.add(wireKey);
+				}
+			} else {
+				duplicateWireKey = previous !== undefined && compareBytes(previous, bytes) === 0;
+				previous = bytes;
+			}
+			if (duplicateWireKey) {
 				throw new Error("Duplicate CBOR map key");
 			}
-			identities.add(identity);
-			wireKeys.add(wireKey);
 			this.writer.writeBytes(bytes);
 			this.writeValue(value);
 		}
@@ -230,6 +257,16 @@ class Encoder {
 		if (this.indefinite) {
 			this.writer.writeByte(BREAK);
 		}
+	}
+}
+
+function checkNonTextKey(identities: Set<string> | undefined, key: CBORIO): void {
+	if (identities && typeof key !== "string") {
+		const identity = mapKeyIdentity(key);
+		if (identities.has(identity)) {
+			throw new Error("Duplicate CBOR map key");
+		}
+		identities.add(identity);
 	}
 }
 

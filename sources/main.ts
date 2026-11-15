@@ -78,7 +78,7 @@ export const CBOR = {
 		}
 
 		const reader = new CompleteReader(data, options);
-		const value = reader.readValue();
+		const value = reader.readItem();
 		if (reader.offset !== data.length) {
 			throw new Error(`Unexpected trailing data at offset ${reader.offset}`);
 		}
@@ -167,7 +167,7 @@ export const CBOR = {
 		const values: CBORIO[] = [];
 		const reader = new CompleteReader(data, options);
 		while (reader.offset < data.length) {
-			values.push(reader.readValue());
+			values.push(reader.readItem());
 		}
 		return values;
 	},

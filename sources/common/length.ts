@@ -67,37 +67,6 @@ export function writeArgumentAt(
 	}
 }
 
-/**
- * Decodes a length value from CBOR data
- */
-export function decodeLength(
-	data: Uint8Array,
-	offset: number,
-	additionalInfo: number,
-	context: string = "length",
-): { length: number; headerSize: number } {
-	const { argument, headerSize } = decodeArgument(data, offset, additionalInfo, context);
-	if (typeof argument === "bigint") {
-		throw new Error(`${context} ${argument} exceeds JavaScript's safe integer range`);
-	}
-	return { length: argument, headerSize };
-}
-
-export function decodeArgument(
-	data: Uint8Array,
-	offset: number,
-	additionalInfo: number,
-	context = "CBOR argument",
-): { argument: number | bigint; headerSize: number } {
-	if (additionalInfo <= DIRECT_ENCODING_MAX) {
-		return { argument: additionalInfo, headerSize: 1 };
-	}
-	return {
-		argument: readExtendedArgument(data, offset + 1, additionalInfo, context),
-		headerSize: 1 + argumentWidths[additionalInfo - UINT8_ADDITIONAL_DATA],
-	};
-}
-
 export function readExtendedArgument(
 	data: Uint8Array,
 	body: number,
