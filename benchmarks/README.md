@@ -19,8 +19,9 @@ nested telemetry with a date, an array of 200 same-shape objects, a mixed-key ma
 
 Each encoder receives the same JavaScript value. Each decoder repeatedly reads a prebuilt view of the same CBOR bytes,
 so the decode timings include only that operation and allow warm decoder caches. Before timing, both decoders must
-reproduce the input from both encoders. The opening table reports encoded sizes in bytes. Mitata reports latency per
-operation and relative speed within each pair. Lower latency is better.
+reproduce the input from both encoders. The opening table reports encoded sizes in bytes. The timing table puts both
+libraries on the same row for each fixture and operation, with p20, p50 (median), and p90 latency in nanoseconds per
+operation. The final column names the library with the lower p50 and shows the slower p50 divided by the faster p50.
 
 The suite calls `CBOR.pack` and `CBOR.unpack` from the local checkout. It configures `cbor-x` to disable record
 extensions, use compact plain-map headers and untagged byte strings, and copy decoded byte strings. Text-keyed maps
