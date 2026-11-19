@@ -60,15 +60,15 @@ const unpackedBytes = CBOR.unpack(packedBytes); // Uint8Array
 
 // Complex structures
 const data = {
-	name: "Alice",
-	age: 30,
-	active: true,
-	scores: [85, 92, 78],
-	avatar: new Uint8Array([0xff, 0xd8, 0xff, 0xe0]), // Binary image data
-	metadata: {
-		created: new Date(),
-		tags: ["user", "premium"],
-	},
+  name: "Alice",
+  age: 30,
+  active: true,
+  scores: [85, 92, 78],
+  avatar: new Uint8Array([0xff, 0xd8, 0xff, 0xe0]), // Binary image data
+  metadata: {
+    created: new Date(),
+    tags: ["user", "premium"],
+  },
 };
 
 const encoded = CBOR.pack(data);
@@ -154,7 +154,7 @@ import { CBOR } from "cbor-ts";
 
 // Encode raw binary data
 const binaryData = new Uint8Array([
-	0x48, 0x65, 0x6c, 0x6c, 0x6f, 0x20, 0x57, 0x6f, 0x72, 0x6c, 0x64,
+  0x48, 0x65, 0x6c, 0x6c, 0x6f, 0x20, 0x57, 0x6f, 0x72, 0x6c, 0x64,
 ]);
 const encoded = CBOR.pack(binaryData);
 const decoded = CBOR.unpack(encoded); // Returns Uint8Array
@@ -164,15 +164,15 @@ console.log(Array.from(decoded)); // [72, 101, 108, 108, 111, 32, 87, 111, 114, 
 
 // Binary data in complex structures
 const document = {
-	id: "doc123",
-	content: "Hello World",
-	thumbnail: new Uint8Array([0xff, 0xd8, 0xff, 0xe0]), // JPEG header bytes
-	attachments: [
-		{
-			name: "data.bin",
-			data: new Uint8Array([0xde, 0xad, 0xbe, 0xef]),
-		},
-	],
+  id: "doc123",
+  content: "Hello World",
+  thumbnail: new Uint8Array([0xff, 0xd8, 0xff, 0xe0]), // JPEG header bytes
+  attachments: [
+    {
+      name: "data.bin",
+      data: new Uint8Array([0xde, 0xad, 0xbe, 0xef]),
+    },
+  ],
 };
 
 const packedDoc = CBOR.pack(document);
@@ -189,26 +189,26 @@ import { CBOR } from "cbor-ts";
 
 // Encode complex nested data with binary content
 const complexData = {
-	users: [
-		{
-			id: 1,
-			name: "Alice",
-			lastSeen: new Date(),
-			avatar: new Uint8Array([1, 2, 3]),
-		},
-		{
-			id: 2,
-			name: "Bob",
-			lastSeen: new Date(),
-			avatar: new Uint8Array([4, 5, 6]),
-		},
-	],
-	settings: {
-		theme: "dark",
-		notifications: true,
-		limits: [10, 50, 100],
-		encryptionKey: new Uint8Array(32), // 256-bit key
-	},
+  users: [
+    {
+      id: 1,
+      name: "Alice",
+      lastSeen: new Date(),
+      avatar: new Uint8Array([1, 2, 3]),
+    },
+    {
+      id: 2,
+      name: "Bob",
+      lastSeen: new Date(),
+      avatar: new Uint8Array([4, 5, 6]),
+    },
+  ],
+  settings: {
+    theme: "dark",
+    notifications: true,
+    limits: [10, 50, 100],
+    encryptionKey: new Uint8Array(32), // 256-bit key
+  },
 };
 
 const encoded = CBOR.pack(complexData);
@@ -224,9 +224,9 @@ console.log(decoded.settings.encryptionKey instanceof Uint8Array); // true
 
 ```ts
 try {
-	CBOR.unpack(Uint8Array.of(0x18)); // A truncated integer
+  CBOR.unpack(Uint8Array.of(0x18)); // A truncated integer
 } catch (error) {
-	console.error("Failed to decode CBOR:", error);
+  console.error("Failed to decode CBOR:", error);
 }
 ```
 

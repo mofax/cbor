@@ -1,4 +1,10 @@
 {
 	"ignorePatterns": [],
-	"useTabs": true
+	"useTabs": true,
+	"overrides": [
+		{
+			"files": ["**/*.md"],
+			"options": { "useTabs": false }
+		}
+	]
 }
